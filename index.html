@@ -59,7 +59,7 @@
     
     /* MENU LATERAL (SIDEBAR) */
     .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 100; overflow: hidden; white-space: nowrap; }
-    .sidebar.collapsed { width: 75px; } /* Largura do menu quando retraído */
+    .sidebar.collapsed { width: 75px; } 
     
     .sidebar-header { padding: 20px 15px; font-size: 20px; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; }
     .sidebar-header .logo-container { display: flex; align-items: center; gap: 10px; overflow: hidden; }
@@ -72,12 +72,11 @@
     .sidebar-menu li.active { background-color: var(--sidebar-active); border-left: 4px solid #fff; }
     
     .sidebar-footer { padding: 20px 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px; }
-    .sidebar-footer button { padding: 12px; display: flex; align-items: center; gap: 14px; overflow: hidden; justify-content: flex-start; }
+    .sidebar-footer button { padding: 12px; display: flex; align-items: center; gap: 14px; overflow: hidden; justify-content: flex-start; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     
     .sidebar-icon { font-size: 20px; min-width: 24px; text-align: center; }
     .sidebar-text { opacity: 1; transition: opacity 0.2s; }
     
-    /* Regras de ocultação de texto quando retraído */
     .sidebar.collapsed .sidebar-text, .sidebar.collapsed .logo-container { opacity: 0; display: none; }
     .sidebar.collapsed .sidebar-header { justify-content: center; }
     .sidebar.collapsed .sidebar-menu li { justify-content: center; padding: 14px 0; }
@@ -130,7 +129,9 @@
     .btn-outline { background: transparent; color: var(--title-color); border: 1px solid var(--title-color); }
     .btn-sidebar { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.4); }
     .btn-sidebar:hover { background: rgba(255,255,255,0.1); }
-    .btn-danger { background: #c62828; }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-save { background: #2e7d32; color: white; padding: 12px; font-size: 15px; margin-top: 15px; } /* Novo botão Salvar */
+    .btn-save:hover { background: #1b5e20; }
     .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
     .btn-block { width: 100%; }
 
@@ -202,11 +203,11 @@
     </ul>
     
     <div class="sidebar-footer">
-      <button class="btn btn-sidebar btn-block" id="themeToggle" onclick="toggleTheme()" title="Alterar Tema">
+      <button class="btn-sidebar btn-block" id="themeToggle" onclick="toggleTheme()" title="Alterar Tema">
         <span class="sidebar-icon" id="themeIcon">🌙</span> 
         <span class="sidebar-text" id="themeText">Modo Escuro</span>
       </button>
-      <button class="btn btn-danger btn-block" onclick="fazerLogout()" title="Sair do Sistema">
+      <button class="btn-danger btn-block" onclick="fazerLogout()" title="Sair do Sistema">
         <span class="sidebar-icon">🚪</span> 
         <span class="sidebar-text">Sair do Sistema</span>
       </button>
@@ -218,8 +219,8 @@
     <div class="header-bar">
       <h2 class="header-title" id="sectionTitle">Realizar Monitoria</h2>
       <div class="counters-container">
-        <div class="counter-badge today"><span>Hoje:</span><span id="todayCounter" class="counter-number">0</span></div>
-        <div class="counter-badge"><span>Total:</span><span id="totalCounter" class="counter-number">0</span></div>
+        <div class="counter-badge today" title="Registros de Hoje"><span>Hoje:</span><span id="todayCounter" class="counter-number">0</span></div>
+        <div class="counter-badge" title="Total na Nuvem"><span>Total:</span><span id="totalCounter" class="counter-number">0</span></div>
       </div>
     </div>
 
@@ -236,19 +237,19 @@
             <div class="card-title">
               <span>1. Cole o Relatório Bruto</span>
               <div style="display: flex; gap: 6px;">
-                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="abrirPopOutWindow()">🪟 Pop-up Tradicional</button>
-                <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Copiar Máscara</button>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="abrirPopOutWindow()">🪟 Pop-up</button>
+                <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Máscara</button>
               </div>
             </div>
-            <textarea id="rawInput" rows="7" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
+            <textarea id="rawInput" rows="6" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px;">
-              <button class="btn btn-block" onclick="processarTexto()">⚡ Processar Dados</button>
-              <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar</button>
+              <button class="btn btn-block" onclick="processarTexto()">⚡ Extrair Dados para os Campos</button>
+              <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar Tudo</button>
             </div>
           </div>
 
           <div class="card">
-            <div class="card-title">2. Dados do Registro</div>
+            <div class="card-title">2. Revisar e Salvar Registro</div>
             <div class="form-row" id="groupReorientOptions" style="display: none;">
               <div class="form-group">
                 <label>Saudação / Período</label>
@@ -287,6 +288,9 @@
             <div class="form-group"><label>Atendimento / Solicitação *</label><textarea id="fieldAtendimento" rows="2" oninput="validarECarregar()"></textarea></div>
             <div class="form-group"><label>Observação(ões)</label><textarea id="fieldObservacao" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
             <div class="form-group"><label>Ocorrência(s)</label><textarea id="fieldOcorrencia" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+            
+            <!-- NOVO BOTÃO DE SALVAR EXPLÍCITO -->
+            <button class="btn btn-save btn-block" onclick="salvarRegistroManualmente()">💾 Salvar Registro na Nuvem</button>
           </div>
         </div>
 
@@ -353,7 +357,11 @@
       <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
         <div class="card-title">
           <span>📜 Registros Salvos no Banco de Dados</span>
-          <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar para Excel (.xlsx)</button>
+          <div style="display: flex; gap: 8px;">
+            <!-- BOTÕES DE EXPORTAÇÃO RESTAURADOS -->
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel (.xlsx)</button>
+            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar (.txt)</button>
+          </div>
         </div>
         <div id="dateTabsContainer" class="date-tabs-container"></div>
         <div id="historyContainer" class="history-list" style="flex: 1;"></div>
@@ -462,9 +470,7 @@
     }
   }
 
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  }
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 
   // FUNÇÕES DE AUTENTICAÇÃO
   function fazerLogin() {
@@ -581,11 +587,8 @@
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
-    
-    // Altera o texto e o ícone do botão no menu lateral
     document.getElementById('themeIcon').innerText = newTheme === 'dark' ? '☀️' : '🌙';
     document.getElementById('themeText').innerText = newTheme === 'dark' ? 'Tema Claro' : 'Modo Escuro';
-    
     localStorage.setItem('theme_preference', newTheme);
   }
 
@@ -639,10 +642,7 @@
     document.getElementById('fieldOcorrencia').value = (ocorrenciaMatch && ocorrenciaMatch[1].trim()) ? ocorrenciaMatch[1].trim() : '';
 
     atualizarInterface();
-    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Informações incompletas! Preencha os campos em vermelho para salvar.'); return; }
-    
-    salvarNoHistoricoFirebase(raw, protNum);
-    showToast('⚡ Dados processados e salvos com sucesso!');
+    showToast('⚡ Dados extraídos! Verifique os campos e clique em Salvar Registro.');
   }
 
   function atualizarInterface() {
@@ -667,9 +667,36 @@
     document.getElementById('reorientRender').innerText = `${document.getElementById('fieldSaudacao').value}, ${document.getElementById('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${document.getElementById('fieldOperador').value || '---'}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${document.getElementById('fieldProtocolo').value || '---'}\nOperador(a): ${document.getElementById('fieldOperador').value || '---'}\n\nSOLICITAÇÃO:\n${document.getElementById('fieldAtendimento').value || '---'}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
   }
 
-  // INTEGRAÇÃO FIRESTORE
+  // NOVO BOTÃO DE SALVAR MANUALMENTE
+  function salvarRegistroManualmente() {
+    if (verificarCamposFaltantes().length > 0) { 
+      showToast('⚠️ Preencha todos os campos obrigatórios (marcados com *) antes de salvar.'); 
+      return; 
+    }
+    
+    // Constrói o texto bruto atualizado baseado nos campos editados para salvar no histórico
+    const op = document.getElementById('fieldOperador').value;
+    const dtHora = document.getElementById('fieldDataHora').value;
+    const prot = document.getElementById('fieldProtocolo').value;
+    const aqm = document.getElementById('fieldNotaAqm').value;
+    const mon = document.getElementById('fieldNotaMonitoria').value;
+    const mo = document.getElementById('fieldMo').value;
+    const atend = document.getElementById('fieldAtendimento').value;
+    const obs = document.getElementById('fieldObservacao').value;
+    const ocor = document.getElementById('fieldOcorrencia').value;
+    
+    const textoParaSalvar = `Realizada: ${getHojeDataFormatada()}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${aqm}\nMonitoria: ${mon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
+    
+    salvarNoHistoricoFirebase(textoParaSalvar, prot);
+  }
+
+  // INTEGRAÇÃO FIRESTORE COM TRATAMENTO DE ERRO APRIMORADO
   async function salvarNoHistoricoFirebase(rawText, protocoloVal) {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      alert("Erro: Você não está logado no sistema.");
+      return;
+    }
+    
     const uid = auth.currentUser.uid;
     const docData = {
       protocolo: protocoloVal || Date.now().toString(),
@@ -682,10 +709,23 @@
     };
 
     try {
-      if (currentEditingId) { await db.collection("monitorias").doc(currentEditingId).update(docData); } 
-      else { await db.collection("monitorias").add(docData); }
-      currentEditingId = null; activeDateTab = docData.data; carregarHistoricoDaNuvem(); 
-    } catch (e) { showToast("Erro ao salvar no banco."); }
+      if (currentEditingId) { 
+        await db.collection("monitorias").doc(currentEditingId).update(docData); 
+      } else { 
+        await db.collection("monitorias").add(docData); 
+      }
+      currentEditingId = null; 
+      activeDateTab = docData.data; 
+      carregarHistoricoDaNuvem(); 
+      showToast("✅ Registro salvo com sucesso na nuvem!");
+      
+      // Limpa os campos após salvar para preparar para o próximo
+      setTimeout(() => { limparRelatorioBruto(); }, 1000);
+      
+    } catch (error) { 
+      console.error("Erro Firebase:", error);
+      alert(`Falha ao salvar no banco de dados.\nMotivo: ${error.message}\n\nVerifique as permissões de gravação (Regras do Firestore).`); 
+    }
   }
 
   async function carregarHistoricoDaNuvem() {
@@ -696,7 +736,10 @@
       snapshot.forEach(doc => registrosNuvem.push({ id: doc.id, ...doc.data() }));
       registrosNuvem.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       renderizarAbasELista();
-    } catch(e) { console.error(e); }
+    } catch(error) { 
+      console.error("Erro ao carregar histórico:", error);
+      // alert("Aviso: Não foi possível carregar o histórico. " + error.message);
+    }
   }
 
   function renderizarAbasELista() {
@@ -707,7 +750,9 @@
     const tabsContainer = document.getElementById('dateTabsContainer');
     const listContainer = document.getElementById('historyContainer');
     if (registrosNuvem.length === 0) {
-      tabsContainer.innerHTML = ''; listContainer.innerHTML = '<div style="padding:10px; color:#888; text-align:center;">Nenhum registro na nuvem.</div>'; return;
+      tabsContainer.innerHTML = ''; 
+      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado na nuvem.<br><small>Os registros que você salvar aparecerão aqui.</small></div>'; 
+      return;
     }
 
     const datasUnicas = [...new Set(registrosNuvem.map(i => i.data))];
@@ -724,7 +769,7 @@
         <div><strong>${escapeHtml(item.operador)}</strong> <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em></span></div>
         <div style="display: flex; gap: 5px;">
           <button class="btn btn-outline" style="padding:3px 6px; font-size:11px;" onclick="recarregarHistorico('${item.id}')">Reabrir</button>
-          <button class="btn-remove-item" onclick="excluirItemHistorico('${item.id}')">❌</button>
+          <button class="btn-remove-item" onclick="excluirItemHistorico('${item.id}')" title="Excluir da Nuvem">❌</button>
         </div>
       </div>
     `).join('');
@@ -736,19 +781,23 @@
     const item = registrosNuvem.find(i => i.id === id);
     if(item) {
       currentEditingId = item.id; document.getElementById('rawInput').value = item.text;
-      
       switchSection('monitoria');
       if (item.tipo) setModo(item.tipo); 
-      
-      processarTexto(); showToast('Reaberto para edição.');
+      processarTexto(); 
+      showToast('Modo de Edição: Registro reaberto.');
     }
   }
 
   async function excluirItemHistorico(id) {
-    if(confirm("Remover permanentemente da nuvem?")) {
-      await db.collection("monitorias").doc(id).delete();
-      if (currentEditingId === id) currentEditingId = null;
-      carregarHistoricoDaNuvem(); showToast('Removido com sucesso.');
+    if(confirm("Deseja realmente remover este registro permanentemente da nuvem?")) {
+      try {
+        await db.collection("monitorias").doc(id).delete();
+        if (currentEditingId === id) currentEditingId = null;
+        carregarHistoricoDaNuvem(); 
+        showToast('🗑️ Removido com sucesso.');
+      } catch(error) {
+        alert("Erro ao excluir: " + error.message);
+      }
     }
   }
 
@@ -778,8 +827,9 @@
     currentEditingId = null; document.getElementById('rawInput').value = '';
     camposObrigatorios.concat(['fieldNotaAqm', 'fieldObservacao', 'fieldOcorrencia']).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
-    limparErrosVisuais(); atualizarInterface(); showToast('Campos limpos!');
+    limparErrosVisuais(); atualizarInterface();
   }
+  
   function limparErrosVisuais() { camposObrigatorios.forEach(id => document.getElementById(id).classList.remove('field-error')); }
   function validarECarregar() { limparErrosVisuais(); atualizarInterface(); }
   function verificarCamposFaltantes() {
@@ -789,13 +839,31 @@
   }
 
   function exportarExcel() {
-    if (registrosNuvem.length === 0) { showToast('Sem dados.'); return; }
+    if (registrosNuvem.length === 0) { showToast('Sem dados para exportar.'); return; }
     const f = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
     const dataRows = f.map(h => ({ "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Texto": h.text }));
     const ws = XLSX.utils.json_to_sheet(dataRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Nuvem");
     XLSX.writeFile(wb, `Monitorias_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  // FUNÇÃO EXPORTAR TXT RESTAURADA
+  function exportarTxt() {
+    if (registrosNuvem.length === 0) { showToast('Sem dados para exportar.'); return; }
+    const f = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
+    
+    let content = "=== HISTÓRICO DE MONITORIAS E REORIENTAÇÕES ===\n\n";
+    f.forEach((h, index) => {
+      content += `--- REGISTRO #${index + 1} (${h.operador} - ${h.data}) ---\n`;
+      content += h.text + "\n\n";
+    });
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `historico_registros_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
   }
 
   window.onload = function() {
