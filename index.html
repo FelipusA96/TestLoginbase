@@ -194,9 +194,10 @@
         <span class="sidebar-icon">📝</span>
         <span class="sidebar-text">Realizar Monitoria</span>
       </li>
-      <li id="menuHistorico" onclick="switchSection('historico')" title="Histórico em Nuvem">
+      <!-- TEXTO ALTERADO DE "Histórico em Nuvem" PARA "Monitoria(s)" -->
+      <li id="menuHistorico" onclick="switchSection('historico')" title="Monitoria(s)">
         <span class="sidebar-icon">📜</span>
-        <span class="sidebar-text">Histórico em Nuvem</span>
+        <span class="sidebar-text">Monitoria(s)</span>
       </li>
     </ul>
     
@@ -349,18 +350,18 @@
       </div>
     </section>
 
-    <!-- SEÇÃO 2: HISTÓRICO GERAL / ANÁLISE DO GESTOR -->
+    <!-- SEÇÃO 2: MONITORIA(S) / GESTÃO -->
     <section id="section-historico" class="content-section">
       <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
         <div class="card-title">
-          <span>📜 Registros Salvos no Banco de Dados</span>
+          <span id="tituloSecaoMonitorias">📜 Monitoria(s) Salvas no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
             <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
           </div>
         </div>
 
-        <!-- PAINEL DE FILTROS AVANÇADOS DO GESTOR (MÊS, CICLO E OPERADOR) -->
+        <!-- PAINEL DE FILTROS DO GESTOR (RENOMEADO PARA "Operador(a)") -->
         <div id="gestorFilterContainer" class="gestor-filters-bar" style="display: none;">
           <div class="form-group" style="margin:0;">
             <label>Filtrar por Mês</label>
@@ -380,7 +381,7 @@
             </select>
           </div>
           <div class="form-group" style="margin:0;">
-            <label>Operador Específico</label>
+            <label>Operador(a)</label>
             <select id="filtroOperadorGestor" onchange="aplicarFiltrosGestor()">
               <option value="TODOS">👥 Todos da Equipe</option>
             </select>
@@ -494,7 +495,7 @@
     } else if (section === 'historico') {
       document.getElementById('section-historico').classList.add('active');
       document.getElementById('menuHistorico').classList.add('active');
-      document.getElementById('sectionTitle').innerText = 'Histórico em Nuvem';
+      document.getElementById('sectionTitle').innerText = 'Monitoria(s)';
     }
   }
 
@@ -588,7 +589,7 @@
     document.getElementById('rawInput').value = rawFormatado;
 
     limparErrosVisuais(); atualizarInterface();
-    if (verificarCamposFaltantes().length > 0) { showToast('⚠️️ Preencha os campos obrigatórios!'); return; }
+    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Preencha os campos obrigatórios!'); return; }
 
     verificarEProcessarSalvamento(rawFormatado, prot);
     showToast('🚀 Ficha gerada via Pop-up e sincronizada!');
@@ -782,6 +783,7 @@
       const isGestor = user.email.toLowerCase() === emailGestor;
       
       let snapshot;
+      // O Gestor baixa todos os registros de qualquer usuário no Firestore
       if (isGestor) {
         snapshot = await db.collection("monitorias").get();
       } else {
@@ -803,13 +805,12 @@
   }
 
   function popularFiltrosGestor() {
-    // Meses disponíveis
     const selectMes = document.getElementById('filtroMesGestor');
     const mesesSet = new Set();
     registrosNuvem.forEach(i => {
       if (i.data) {
         const partes = i.data.split('/');
-        if (partes.length === 3) mesesSet.add(`${partes[1]}/${partes[2]}`); // MM/AAAA
+        if (partes.length === 3) mesesSet.add(`${partes[1]}/${partes[2]}`);
       }
     });
     const mesesUnicos = [...mesesSet].sort();
@@ -819,7 +820,6 @@
     });
     selectMes.innerHTML = htmlMes;
 
-    // Operadores disponíveis
     const selectOp = document.getElementById('filtroOperadorGestor');
     const opsSet = new Set(registrosNuvem.map(i => i.operador).filter(Boolean));
     const opsUnicos = [...opsSet].sort();
@@ -847,12 +847,10 @@
       const cicloFiltro = document.getElementById('filtroCicloGestor').value;
       const opFiltro = document.getElementById('filtroOperadorGestor').value;
 
-      // 1. Filtro por Operador
       if (opFiltro !== 'TODAS') {
         listaParaExibir = listaParaExibir.filter(i => i.operador === opFiltro);
       }
 
-      // 2. Filtro por Mês (MM/AAAA)
       if (mesFiltro !== 'TODAS') {
         listaParaExibir = listaParaExibir.filter(i => {
           if (!i.data) return false;
@@ -861,7 +859,6 @@
         });
       }
 
-      // 3. Filtro por Ciclo de Dias da Semana
       if (cicloFiltro !== 'TODAS') {
         listaParaExibir = listaParaExibir.filter(i => {
           if (!i.data) return false;
@@ -883,7 +880,7 @@
     const listContainer = document.getElementById('historyContainer');
     if (listaParaExibir.length === 0) {
       tabsContainer.innerHTML = ''; 
-      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este filtro.<br><small>Tente alterar o Mês, Ciclo ou Operador.</small></div>'; 
+      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este filtro.<br><small>Tente alterar o Mês, Ciclo ou Operador(a).</small></div>'; 
       return;
     }
 
