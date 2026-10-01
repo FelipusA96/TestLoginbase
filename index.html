@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Monitoria e Reorientação</title>
+  
+  <!-- Firebase Compat v10 (Para facilitar a integração sem quebrar o HTML atual) -->
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+
+  <!-- html2canvas e SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f0f2f5;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --text-muted: #555555;
+      --border-color: #cccccc;
+      --title-color: #1a237e;
+      --input-bg: #ffffff;
+      --input-readonly-bg: #e9ecef;
+      --history-hover: #f5f5f5;
+      --error-bg: #ffebee;
+      --error-border: #d32f2f;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --text-muted: #aaaaaa;
+      --border-color: #444444;
+      --title-color: #9fa8da;
+      --input-bg: #2d2d2d;
+      --input-readonly-bg: #383838;
+      --history-hover: #2a2a2a;
+      --error-bg: #3c1a1d;
+      --error-border: #f44336;
+    }
+
+    * { box-sizing: border-box; transition: background-color 0.2s, color 0.2s; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); }
+    .app-container { max-width: 1200px; margin: 0 auto; display: none; } /* Oculto até logar */
+    
+    /* TELA DE LOGIN */
+    #login-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-color); z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-box {
+      background: var(--card-bg); padding: 40px 30px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 100%; max-width: 350px; text-align: center;
+    }
+    .login-box h2 { margin-top: 0; color: var(--title-color); }
+    .login-box input { margin-bottom: 15px; }
+
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .header-title { margin: 0; color: var(--title-color); font-weight: 700; font-size: 24px; }
+
+    .counters-container { display: flex; gap: 10px; align-items: center; }
+    .counter-badge { background-color: #1a237e; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .counter-badge.today { background-color: #2e7d32; }
+    .counter-number { background: #ffffff; color: #333; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+
+    .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } }
+    
+    .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; }
+    .card-title { font-size: 16px; font-weight: bold; color: var(--title-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    
+    textarea, input, select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--text-color); }
+    textarea:focus, input:focus, select:focus { border-color: var(--title-color); outline: none; }
+    input[readonly] { background-color: var(--input-readonly-bg) !important; cursor: not-allowed; opacity: 0.85; font-weight: bold; }
+    .field-error { border-color: var(--error-border) !important; background-color: var(--error-bg) !important; }
+
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 12px; font-weight: bold; color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .btn { background: #1a237e; color: #ffffff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn:hover { background: #283593; }
+    .btn-secondary { background: #2e7d32; }
+    .btn-secondary:hover { background: #1b5e20; }
+    .btn-purple { background: #6a1b9a; }
+    .btn-warning { background: #e65100; }
+    .btn-teal { background: #00796b; }
+    .btn-outline { background: transparent; color: var(--title-color); border: 1px solid var(--title-color); }
+    .btn-danger { background: #c62828; padding: 6px 10px; font-size: 11px; }
+    .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .btn-block { width: 100%; }
+
+    .mode-selector { display: flex; gap: 10px; margin-bottom: 15px; }
+    .mode-btn { flex: 1; padding: 10px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; }
+    .mode-btn.active { background: #1a237e; color: #ffffff; }
+
+    .date-tabs-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+    .date-tab { padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 15px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; white-space: nowrap; }
+    .date-tab.active { background: var(--title-color); color: #ffffff; border-color: var(--title-color); }
+
+    .preview-container { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .sheet { border: 2px solid #000000; padding: 0; background: #ffffff !important; font-family: Arial, sans-serif; color: #000000 !important; width: 100%; box-sizing: border-box; }
+    .sheet * { color: #000000 !important; }
+    .sheet-header { text-align: center; padding: 10px 0 5px 0; font-weight: bold; font-size: 16px; text-transform: uppercase; }
+    .sheet-subheader { text-align: center; font-size: 11px; margin-bottom: 10px; font-weight: bold; }
+    .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: -1px; }
+    .sheet-table td, .sheet-table th { border: 1px solid #000000; padding: 6px 8px; font-size: 12px; vertical-align: top; }
+    .sheet-table th { background-color: #f2f2f2 !important; text-align: left; font-weight: bold; text-transform: uppercase; }
+    .bg-gray { background-color: #f8f9fa !important; }
+    .score-badge { font-weight: bold; color: #2e7d32 !important; font-size: 14px; }
+    .footer-warning { border-top: 1px solid #000000; padding: 12px; text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; margin-top: 15px; }
+
+    .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
+
+    .history-list { max-height: 250px; overflow-y: auto; margin-top: 5px; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+    .history-item:hover { background-color: var(--history-hover); }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
+  </style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h2>📋 Acesso ao Painel</h2>
+    <input type="text" id="loginUser" placeholder="Login (ex: felipe.valente)">
+    <input type="password" id="loginPass" placeholder="Senha">
+    <button class="btn btn-block" onclick="fazerLogin()">Entrar no Sistema</button>
+    <div id="loginError" style="color:red; font-size:12px; margin-top:12px; display:none;">Credenciais inválidas.</div>
+  </div>
+</div>
+
+<div class="app-container" id="appContainer">
+  <div class="header-bar">
+    <h2 class="header-title">📋 PAINEL DE MONITORIA & REORIENTAÇÃO</h2>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="counters-container">
+        <div class="counter-badge today"><span>Hoje:</span><span id="todayCounter" class="counter-number">0</span></div>
+        <div class="counter-badge"><span>Total:</span><span id="totalCounter" class="counter-number">0</span></div>
+      </div>
+      <button class="btn btn-outline" id="themeToggle" onclick="toggleTheme()">🌙 Modo Escuro</button>
+      <button class="btn btn-danger" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="mode-selector">
+    <div id="btnModeMonitoria" class="mode-btn active" onclick="setModo('MONITORIA')">Ficha Visual de Monitoria</div>
+    <div id="btnModeReorientacao" class="mode-btn" onclick="setModo('REORIENTACAO')">E-mail de Reorientação</div>
+  </div>
+
+  <div class="grid-layout">
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <span>1. Cole o Relatório Bruto</span>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Copiar Máscara</button>
+          </div>
+        </div>
+        <textarea id="rawInput" rows="9" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px;">
+          <button class="btn btn-block" onclick="processarTexto()">⚡ Processar Dados</button>
+          <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">2. Dados do Registro</div>
+        <div class="form-row" id="groupReorientOptions" style="display: none;">
+          <div class="form-group">
+            <label>Saudação / Período</label>
+            <select id="fieldSaudacao" onchange="atualizarInterface()">
+              <option value="Boa tarde">Boa tarde</option>
+              <option value="Bom dia">Bom dia</option>
+              <option value="Boa noite">Boa noite</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Supervisor Responsável</label>
+            <select id="fieldSupervisor" onchange="atualizarInterface()">
+              <option value="Kelvin">Kelvin</option>
+              <option value="Eliane">Eliane</option>
+              <option value="José">José</option>
+              <option value="Leidiane">Leidiane</option>
+              <option value="Diogo">Diogo</option>
+              <option value="Pamela">Pamela</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group"><label>Data Realizada</label><input type="text" id="fieldDataRealizada" readonly tabindex="-1"></div>
+          <div class="form-group"><label>Operador(a) *</label><input type="text" id="fieldOperador" oninput="validarECarregar()"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Data/Hora Atendimento *</label><input type="text" id="fieldDataHora" oninput="validarECarregar()"></div>
+          <div class="form-group"><label>Protocolo *</label><input type="text" id="fieldProtocolo" oninput="validarECarregar()"></div>
+        </div>
+        <div class="form-row" id="rowNotas">
+          <div class="form-group"><label>Nota Monitoria *</label><input type="text" id="fieldNotaMonitoria" oninput="validarECarregar()"></div>
+          <div class="form-group"><label>Nota AQM</label><input type="text" id="fieldNotaAqm" oninput="validarECarregar()"></div>
+        </div>
+        <div class="form-group"><label>M.O. *</label><input type="text" id="fieldMo" oninput="validarECarregar()"></div>
+        <div class="form-group"><label>Atendimento / Solicitação *</label><textarea id="fieldAtendimento" rows="3" oninput="validarECarregar()"></textarea></div>
+        <div class="form-group"><label>Observação(ões)</label><textarea id="fieldObservacao" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+        <div class="form-group"><label>Ocorrência(s)</label><textarea id="fieldOcorrencia" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+      </div>
+    </div>
+
+    <div>
+      <div id="viewMonitoria" class="preview-container">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+          <button class="btn btn-secondary" onclick="copiarFichaFormatada()">📋 Copiar Formatado</button>
+          <button class="btn btn-purple" onclick="copiarFichaComoImagem()">🖼️️ Copiar Imagem</button>
+        </div>
+
+        <div id="fichaRender" class="sheet">
+          <div class="sheet-header">FEEDBACK MONITORIA</div>
+          <div class="sheet-subheader">Data de Realização: <span id="outDataRealizada">---</span></div>
+          <table class="sheet-table">
+            <tr><td colspan="2"><strong>Operador(a):</strong> <span id="outOperador">---</span></td></tr>
+            <tr class="bg-gray">
+              <td width="50%"><strong>NOTA MONITORIA:</strong> <span id="outNotaMonitoria" class="score-badge">--</span></td>
+              <td width="50%"><strong>NOTA AQM:</strong> <span id="outNotaAqm" class="score-badge">--</span></td>
+            </tr>
+          </table>
+          <table class="sheet-table">
+            <tr>
+              <td width="50%"><strong>PROTOCOLO:</strong> <br><span id="outProtocolo">---</span></td>
+              <td width="50%"><strong>M.O.:</strong> <br><span id="outMo">---</span></td>
+            </tr>
+            <tr><td colspan="2"><strong>DATA DO ATENDIMENTO:</strong> <span id="outDataHora">---</span></td></tr>
+          </table>
+          <table class="sheet-table">
+            <tr><th>DESCRIÇÃO DO ATENDIMENTO</th></tr>
+            <tr><td><div id="outAtendimento">---</div></td></tr>
+          </table>
+          <table class="sheet-table">
+            <tr><th>OBSERVAÇÕES / PONTOS DE ATENÇÃO</th></tr>
+            <tr>
+              <td>
+                <p style="margin: 0 0 8px 0;"><strong>✨ Ponto Forte:</strong><br>Seu empenho reforça seu potencial. Com constância e foco, seus resultados serão cada vez maiores.</p>
+                <p style="margin: 0 0 8px 0;"><strong>💡 Observação(ões):</strong><br><span id="outObservacao">-Não se aplica.</span></p>
+                <p style="margin: 0;"><strong>🔍 Ocorrência(s):</strong><br><span id="outOcorrencia">-Não se aplica.</span></p>
+              </td>
+            </tr>
+          </table>
+          <div class="footer-warning">QUALQUER DÚVIDA OU CONTESTAÇÃO, ACIONAR SUA SUPERVISÃO! OBRIGADO</div>
+        </div>
+
+        <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="margin: 0;">📝 Justificativa / Ocorrência Rápida</label>
+            <button class="btn btn-teal" style="padding: 4px 10px; font-size: 11px;" onclick="copiarTextoJustificativa()">📋 Copiar Justificativa</button>
+          </div>
+          <div id="justificativaRender" class="output-box">---</div>
+        </div>
+      </div>
+
+      <div id="viewReorientacao" class="preview-container" style="display: none;">
+        <button class="btn btn-warning btn-block" style="margin-bottom: 15px;" onclick="copiarTextoReorientacao()">📋 Copiar Texto do E-mail</button>
+        <div id="reorientRender" class="output-box">---</div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <div class="card-title">
+          <span>📜 Histórico Salvo na Nuvem</span>
+          <div style="display: flex; gap: 5px;">
+            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="exportarExcel()">📊 Exportar (.xlsx)</button>
+          </div>
+        </div>
+        <div id="dateTabsContainer" class="date-tabs-container"></div>
+        <div id="historyContainer" class="history-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">Texto copiado com sucesso!</div>
+
+<script>
+  // CONFIGURAÇÃO FIREBASE (As suas chaves ativadas)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDOwfE13NuGGyfQ4LxFgKuXt5mtsGal4w",
+    authDomain: "painelmonitoria.firebaseapp.com",
+    projectId: "painelmonitoria",
+    storageBucket: "painelmonitoria.firebasestorage.app",
+    messagingSenderId: "148347554120",
+    appId: "1:148347554120:web:c92757d4939425af0e4b7d"
+  };
+
+  // Inicializa o Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // VARIÁVEIS GLOBAIS
+  let modoAtual = 'MONITORIA';
+  let currentEditingId = null;
+  let activeDateTab = 'TODAS';
+  let registrosNuvem = []; 
+  const camposObrigatorios = ['fieldDataRealizada','fieldOperador','fieldDataHora','fieldProtocolo','fieldNotaMonitoria','fieldMo','fieldAtendimento'];
+
+  // OBSERVAÇÃO DE LOGIN
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('appContainer').style.display = 'block';
+      carregarHistoricoDaNuvem(); 
+    } else {
+      document.getElementById('login-overlay').style.display = 'flex';
+      document.getElementById('appContainer').style.display = 'none';
+    }
+  });
+
+  // FUNÇÕES DE AUTENTICAÇÃO
+  function fazerLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    const email = user + "@painel.com"; 
+    
+    auth.signInWithEmailAndPassword(email, pass).catch((error) => {
+      document.getElementById('loginError').style.display = 'block';
+    });
+  }
+
+  function fazerLogout() {
+    auth.signOut();
+  }
+
+  // UTILS & HELPERS
+  function getHojeDataFormatada() {
+    const hoje = new Date();
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    return `${dia}/${mes}/${hoje.getFullYear()}`;
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    document.getElementById('themeToggle').innerText = newTheme === 'dark' ? '☀️ Modo Claro' : '🌙 Modo Escuro';
+    localStorage.setItem('theme_preference', newTheme);
+  }
+
+  function setModo(modo) {
+    modoAtual = modo;
+    document.getElementById('btnModeMonitoria').classList.toggle('active', modo === 'MONITORIA');
+    document.getElementById('btnModeReorientacao').classList.toggle('active', modo === 'REORIENTACAO');
+    document.getElementById('viewMonitoria').style.display = modo === 'MONITORIA' ? 'block' : 'none';
+    document.getElementById('viewReorientacao').style.display = modo === 'REORIENTACAO' ? 'block' : 'none';
+    document.getElementById('groupReorientOptions').style.display = modo === 'REORIENTACAO' ? 'grid' : 'none';
+    document.getElementById('rowNotas').style.display = modo === 'MONITORIA' ? 'grid' : 'none';
+    atualizarInterface();
+  }
+
+  // CORE APP LOGIC
+  function processarTexto() {
+    const raw = document.getElementById('rawInput').value;
+    if (!raw.trim()) { showToast('Cole algum texto primeiro.'); return; }
+    limparErrosVisuais();
+
+    const dataHoje = getHojeDataFormatada();
+    const operadorMatch = raw.match(/Operador\(a\):\s*(.*)/i);
+    const dataHoraMatch = raw.match(/Data\/Hora:\s*(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}:\d{2})?)/i) || raw.match(/Data\/Hora:\s*([^\n\r]+)/i);
+    const protocoloMatch = raw.match(/Protocolo:\s*(\d+)/i) || raw.match(/Protocolo:\s*(.*)/i);
+    const protNum = protocoloMatch ? protocoloMatch[1].replace(/Protocolo:\s*/i, '').trim() : '';
+    const aqmMatch = raw.match(/AQM:\s*(\d+(?:[.,]\d+)?)/i);
+    const monitoriaMatch = raw.match(/Monitoria:\s*(\d+(?:[.,]\d+)?)/i) || raw.match(/Nota:\s*(\d+(?:[.,]\d+)?)/i);
+    const moMatch = raw.match(/MO:\s*(\d+)/i) || raw.match(/MO:\s*(.*)/i);
+    
+    const atendimentoMatch = raw.match(/(?:Registro de Atendimento|Atendimento)[\s\S]*?MO:\s*[^\n]*\n([\s\S]*?)(?=(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências|DESVIO):|$)/i) || raw.match(/(?:Registro de Atendimento|Atendimento)\s*\n([\s\S]*?)(?=(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências|DESVIO):|$)/i);
+    const obsMatch = raw.match(/Observação\(ões\):\s*([\s\S]*?)(?=(?:Ocorrência\(s\)|Ocorrências|DESVIO):|$)/i) || raw.match(/Observação:\s*([\s\S]*?)(?=(?:Ocorrência\(s\)|Ocorrências|DESVIO):|$)/i);
+    const ocorrenciaMatch = raw.match(/Ocorrência\(s\):\s*([\s\S]*)/i) || raw.match(/Ocorrências:\s*([\s\S]*)/i) || raw.match(/DESVIO:\s*([\s\S]*)/i);
+
+    document.getElementById('fieldDataRealizada').value = dataHoje;
+    document.getElementById('fieldOperador').value = operadorMatch ? operadorMatch[1].trim() : '';
+    document.getElementById('fieldDataHora').value = (dataHoraMatch && !dataHoraMatch[1].toLowerCase().includes('protocolo')) ? dataHoraMatch[1].trim() : '';
+    document.getElementById('fieldProtocolo').value = protNum;
+    document.getElementById('fieldNotaAqm').value = aqmMatch ? aqmMatch[1].trim() : '';
+    document.getElementById('fieldNotaMonitoria').value = monitoriaMatch ? monitoriaMatch[1].trim() : '';
+    document.getElementById('fieldMo').value = moMatch ? moMatch[1].replace(/MO:\s*/i, '').trim() : '';
+
+    if (atendimentoMatch) {
+      document.getElementById('fieldAtendimento').value = atendimentoMatch[1].trim();
+    } else if (raw.includes("Sr.ª") || raw.includes("Sra.")) {
+      const fallback = raw.substring(raw.search(/Sr\.?ª?/i));
+      const obsIdx = fallback.search(/(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências):/i);
+      document.getElementById('fieldAtendimento').value = obsIdx !== -1 ? fallback.substring(0, obsIdx).trim() : fallback.trim();
+    } else { document.getElementById('fieldAtendimento').value = ''; }
+
+    document.getElementById('fieldObservacao').value = (obsMatch && obsMatch[1].trim()) ? obsMatch[1].trim() : '';
+    document.getElementById('fieldOcorrencia').value = (ocorrenciaMatch && ocorrenciaMatch[1].trim()) ? ocorrenciaMatch[1].trim() : '';
+
+    atualizarInterface();
+    if (verificarCamposFaltantes().length > 0) {
+      showToast('⚠️ Informações incompletas! Preencha os campos em vermelho para salvar.');
+      return;
+    }
+    salvarNoHistoricoFirebase(raw, protNum);
+    showToast('⚡ Dados processados e salvos com sucesso!');
+  }
+
+  function atualizarInterface() {
+    const dataHora = document.getElementById('fieldDataHora').value || '---';
+    const observacao = document.getElementById('fieldObservacao').value.trim() !== '' ? document.getElementById('fieldObservacao').value.trim() : '-Não se aplica.';
+    const ocorrencia = document.getElementById('fieldOcorrencia').value.trim() !== '' ? document.getElementById('fieldOcorrencia').value.trim() : '-Não se aplica.';
+    
+    document.getElementById('outDataRealizada').innerText = getHojeDataFormatada();
+    document.getElementById('outOperador').innerText = document.getElementById('fieldOperador').value || '---';
+    document.getElementById('outDataHora').innerText = dataHora;
+    document.getElementById('outProtocolo').innerText = document.getElementById('fieldProtocolo').value || '---';
+    document.getElementById('outNotaMonitoria').innerText = document.getElementById('fieldNotaMonitoria').value || '--';
+    document.getElementById('outNotaAqm').innerText = document.getElementById('fieldNotaAqm').value || '--';
+    document.getElementById('outMo').innerText = document.getElementById('fieldMo').value || '---';
+    document.getElementById('outAtendimento').innerText = document.getElementById('fieldAtendimento').value || '---';
+    document.getElementById('outObservacao').innerText = observacao;
+    document.getElementById('outOcorrencia').innerText = ocorrencia;
+
+    let detalhe = (observacao !== '-Não se aplica.' && ocorrencia !== '-Não se aplica.') ? `OBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}` : (observacao !== '-Não se aplica.') ? `OBSERVAÇÃO(ÕES):\n${observacao}` : `DESVIO / OCORRÊNCIA(S):\n${ocorrencia}`;
+    document.getElementById('justificativaRender').innerText = `Data/Hora: ${dataHora}\n\n${detalhe}`;
+    
+    document.getElementById('reorientRender').innerText = `${document.getElementById('fieldSaudacao').value}, ${document.getElementById('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${document.getElementById('fieldOperador').value || '---'}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${document.getElementById('fieldProtocolo').value || '---'}\nOperador(a): ${document.getElementById('fieldOperador').value || '---'}\n\nSOLICITAÇÃO:\n${document.getElementById('fieldAtendimento').value || '---'}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
+  }
+
+  // INTEGRAÇÃO FIRESTORE (Substitui LocalStorage)
+  async function salvarNoHistoricoFirebase(rawText, protocoloVal) {
+    if (!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const docData = {
+      protocolo: protocoloVal || Date.now().toString(),
+      operador: document.getElementById('fieldOperador').value || 'Não identificado',
+      data: getHojeDataFormatada(),
+      text: rawText,
+      tipo: modoAtual,
+      userId: uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+      if (currentEditingId) {
+        await db.collection("monitorias").doc(currentEditingId).update(docData);
+      } else {
+        await db.collection("monitorias").add(docData);
+      }
+      currentEditingId = null; 
+      activeDateTab = docData.data;
+      carregarHistoricoDaNuvem(); 
+    } catch (e) { showToast("Erro ao salvar no banco."); }
+  }
+
+  async function carregarHistoricoDaNuvem() {
+    if (!auth.currentUser) return;
+    try {
+      const snapshot = await db.collection("monitorias").where("userId", "==", auth.currentUser.uid).get();
+      registrosNuvem = [];
+      snapshot.forEach(doc => registrosNuvem.push({ id: doc.id, ...doc.data() }));
+      // Ordenar do mais recente para o mais antigo pelo timestamp gerado na nuvem
+      registrosNuvem.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      renderizarAbasELista();
+    } catch(e) { console.error(e); }
+  }
+
+  function renderizarAbasELista() {
+    const dataHoje = getHojeDataFormatada();
+    document.getElementById('todayCounter').innerText = registrosNuvem.filter(i => i.data === dataHoje).length;
+    document.getElementById('totalCounter').innerText = registrosNuvem.length;
+
+    const tabsContainer = document.getElementById('dateTabsContainer');
+    const listContainer = document.getElementById('historyContainer');
+    if (registrosNuvem.length === 0) {
+      tabsContainer.innerHTML = ''; listContainer.innerHTML = '<div style="padding:10px; color:#888; text-align:center;">Nenhum registro na nuvem.</div>'; return;
+    }
+
+    const datasUnicas = [...new Set(registrosNuvem.map(i => i.data))];
+    let tabsHtml = `<div class="date-tab ${activeDateTab === 'TODAS' ? 'active' : ''}" onclick="setDateTab('TODAS')">Todas (${registrosNuvem.length})</div>`;
+    datasUnicas.forEach(dt => {
+      const c = registrosNuvem.filter(i => i.data === dt).length;
+      tabsHtml += `<div class="date-tab ${activeDateTab === dt ? 'active' : ''}" onclick="setDateTab('${dt}')">${dt === dataHoje ? 'Hoje' : dt} (${c})</div>`;
+    });
+    tabsContainer.innerHTML = tabsHtml;
+
+    const filtrados = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
+    listContainer.innerHTML = filtrados.map(item => `
+      <div class="history-item">
+        <div><strong>${escapeHtml(item.operador)}</strong> <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)})</span></div>
+        <div style="display: flex; gap: 5px;">
+          <button class="btn btn-outline" style="padding:3px 6px; font-size:11px;" onclick="recarregarHistorico('${item.id}')">Reabrir</button>
+          <button class="btn-remove-item" onclick="excluirItemHistorico('${item.id}')">❌</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function setDateTab(dt) { activeDateTab = dt; renderizarAbasELista(); }
+
+  function recarregarHistorico(id) {
+    const item = registrosNuvem.find(i => i.id === id);
+    if(item) {
+      currentEditingId = item.id;
+      document.getElementById('rawInput').value = item.text;
+      if (item.tipo) setModo(item.tipo);
+      processarTexto(); showToast('Reaberto para edição.');
+    }
+  }
+
+  async function excluirItemHistorico(id) {
+    if(confirm("Remover permanentemente da nuvem?")) {
+      await db.collection("monitorias").doc(id).delete();
+      if (currentEditingId === id) currentEditingId = null;
+      carregarHistoricoDaNuvem(); showToast('Removido com sucesso.');
+    }
+  }
+
+  // EXPORTAÇÕES E VISUAIS
+  async function copiarFichaFormatada() {
+    try {
+      const el = document.getElementById('fichaRender');
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([el.outerHTML], { type: 'text/html' }), 'text/plain': new Blob([el.innerText], { type: 'text/plain' }) })]);
+      showToast('Ficha copiada!');
+    } catch (e) { showToast('Erro ao copiar.'); }
+  }
+
+  async function copiarFichaComoImagem() {
+    showToast('Gerando imagem...');
+    const canvas = await html2canvas(document.getElementById('fichaRender'), { scale: 2, backgroundColor: '#ffffff' });
+    canvas.toBlob(async (blob) => {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('🖼️ Imagem PNG copiada!');
+    }, 'image/png');
+  }
+
+  async function copiarMascaraParaClipboard() {
+    await navigator.clipboard.writeText(`Realizada: ${getHojeDataFormatada()}\nOperador(a): \nData/Hora: \nProtocolo: \nAQM: \nMonitoria: \nRegistro de Atendimento\nMO: \nSr.ª \nObservação(ões):\nOcorrência(s):`);
+    showToast('Máscara copiada!');
+  }
+  async function copiarTextoReorientacao() { await navigator.clipboard.writeText(document.getElementById('reorientRender').innerText); showToast('Copiado!'); }
+  async function copiarTextoJustificativa() { await navigator.clipboard.writeText(document.getElementById('justificativaRender').innerText); showToast('Copiado!'); }
+
+  function limparRelatorioBruto() {
+    currentEditingId = null; document.getElementById('rawInput').value = '';
+    camposObrigatorios.concat(['fieldNotaAqm', 'fieldObservacao', 'fieldOcorrencia']).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
+    limparErrosVisuais(); atualizarInterface(); showToast('Campos limpos!');
+  }
+  function limparErrosVisuais() { camposObrigatorios.forEach(id => document.getElementById(id).classList.remove('field-error')); }
+  function validarECarregar() { limparErrosVisuais(); atualizarInterface(); }
+  function verificarCamposFaltantes() {
+    let f = []; camposObrigatorios.forEach(id => {
+      const el = document.getElementById(id); if (!el || !el.value.trim()) { el.classList.add('field-error'); f.push(id); } else { el.classList.remove('field-error'); }
+    }); return f;
+  }
+
+  function exportarExcel() {
+    if (registrosNuvem.length === 0) { showToast('Sem dados.'); return; }
+    const f = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
+    const dataRows = f.map(h => ({ "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Texto": h.text }));
+    const ws = XLSX.utils.json_to_sheet(dataRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Nuvem");
+    XLSX.writeFile(wb, `Monitorias_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  window.onload = function() {
+    if (localStorage.getItem('theme_preference') === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); document.getElementById('themeToggle').innerText = '☀️ Modo Claro'; }
+    document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
+  };
+</script>
+</body>
+</html>
