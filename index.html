@@ -51,20 +51,37 @@
       --sidebar-active: #3949ab;
     }
 
-    * { box-sizing: border-box; transition: background-color 0.2s, color 0.2s; }
+    * { box-sizing: border-box; transition: background-color 0.2s, color 0.2s, width 0.3s; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; color: var(--text-color); height: 100vh; overflow: hidden; }
     
     /* LAYOUT DASHBOARD */
-    .dashboard-layout { display: none; height: 100vh; width: 100vw; } /* Flex applied by JS */
+    .dashboard-layout { display: none; height: 100vh; width: 100vw; }
     
     /* MENU LATERAL (SIDEBAR) */
-    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 100; }
-    .sidebar-header { padding: 25px 20px; font-size: 20px; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 1px; }
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 100; overflow: hidden; white-space: nowrap; }
+    .sidebar.collapsed { width: 75px; } /* Largura do menu quando retraído */
+    
+    .sidebar-header { padding: 20px 15px; font-size: 20px; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-header .logo-container { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+    .toggle-sidebar-btn { background: transparent; border: none; color: inherit; font-size: 22px; cursor: pointer; padding: 5px; min-width: 30px; display: flex; justify-content: center; }
+    .toggle-sidebar-btn:hover { background: rgba(255,255,255,0.1); border-radius: 6px; }
+    
     .sidebar-menu { list-style: none; padding: 15px 10px; margin: 0; flex: 1; }
-    .sidebar-menu li { padding: 14px 18px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+    .sidebar-menu li { padding: 14px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 14px; transition: 0.2s; }
     .sidebar-menu li:hover { background-color: var(--sidebar-hover); }
     .sidebar-menu li.active { background-color: var(--sidebar-active); border-left: 4px solid #fff; }
-    .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+    
+    .sidebar-footer { padding: 20px 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px; }
+    .sidebar-footer button { padding: 12px; display: flex; align-items: center; gap: 14px; overflow: hidden; justify-content: flex-start; }
+    
+    .sidebar-icon { font-size: 20px; min-width: 24px; text-align: center; }
+    .sidebar-text { opacity: 1; transition: opacity 0.2s; }
+    
+    /* Regras de ocultação de texto quando retraído */
+    .sidebar.collapsed .sidebar-text, .sidebar.collapsed .logo-container { opacity: 0; display: none; }
+    .sidebar.collapsed .sidebar-header { justify-content: center; }
+    .sidebar.collapsed .sidebar-menu li { justify-content: center; padding: 14px 0; }
+    .sidebar.collapsed .sidebar-footer button { justify-content: center; padding: 12px 0; }
 
     /* CONTEÚDO PRINCIPAL */
     .main-content { flex: 1; overflow-y: auto; padding: 30px; }
@@ -89,7 +106,7 @@
     .counter-number { background: #ffffff; color: #333; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
 
     .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } .dashboard-layout { flex-direction: column; } .sidebar { width: 100%; height: auto; } }
+    @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } .dashboard-layout { flex-direction: column; } .sidebar { width: 100%; height: auto; } .sidebar.collapsed { width: 100%; } }
     
     .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; }
     .card-title { font-size: 16px; font-weight: bold; color: var(--title-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -117,7 +134,6 @@
     .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
     .btn-block { width: 100%; }
 
-    /* SELETOR DE MODO DENTRO DA SEÇÃO MONITORIA */
     .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
     .mode-btn.active { background: #1a237e; color: #ffffff; }
@@ -164,16 +180,36 @@
 <!-- ESTRUTURA DO DASHBOARD -->
 <div class="dashboard-layout" id="appContainer">
   
-  <!-- MENU LATERAL -->
-  <aside class="sidebar">
-    <div class="sidebar-header">🌟 Painel QA</div>
+  <!-- MENU LATERAL RETRÁTIL -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <span class="sidebar-icon">🌟</span>
+        <span class="sidebar-text">Painel QA</span>
+      </div>
+      <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Recolher/Expandir Menu">☰</button>
+    </div>
+    
     <ul class="sidebar-menu">
-      <li class="active" id="menuMonitoria" onclick="switchSection('monitoria')">📝 Realizar Monitoria</li>
-      <li id="menuHistorico" onclick="switchSection('historico')">📜 Histórico em Nuvem</li>
+      <li class="active" id="menuMonitoria" onclick="switchSection('monitoria')" title="Realizar Monitoria">
+        <span class="sidebar-icon">📝</span>
+        <span class="sidebar-text">Realizar Monitoria</span>
+      </li>
+      <li id="menuHistorico" onclick="switchSection('historico')" title="Histórico em Nuvem">
+        <span class="sidebar-icon">📜</span>
+        <span class="sidebar-text">Histórico em Nuvem</span>
+      </li>
     </ul>
+    
     <div class="sidebar-footer">
-      <button class="btn btn-sidebar btn-block" id="themeToggle" onclick="toggleTheme()" style="margin-bottom: 10px;">🌙 Modo Escuro</button>
-      <button class="btn btn-danger btn-block" onclick="fazerLogout()">Sair do Sistema</button>
+      <button class="btn btn-sidebar btn-block" id="themeToggle" onclick="toggleTheme()" title="Alterar Tema">
+        <span class="sidebar-icon" id="themeIcon">🌙</span> 
+        <span class="sidebar-text" id="themeText">Modo Escuro</span>
+      </button>
+      <button class="btn btn-danger btn-block" onclick="fazerLogout()" title="Sair do Sistema">
+        <span class="sidebar-icon">🚪</span> 
+        <span class="sidebar-text">Sair do Sistema</span>
+      </button>
     </div>
   </aside>
 
@@ -189,15 +225,12 @@
 
     <!-- SEÇÃO 1: REALIZAR MONITORIA -->
     <section id="section-monitoria" class="content-section active">
-      
-      <!-- BOTÕES AGORA RESTRITOS A ESTA ABA -->
       <div class="mode-selector">
         <div id="btnModeMonitoria" class="mode-btn active" onclick="setModo('MONITORIA')">Ficha Visual de Monitoria</div>
         <div id="btnModeReorientacao" class="mode-btn" onclick="setModo('REORIENTACAO')">E-mail de Reorientação</div>
       </div>
 
       <div class="grid-layout">
-        <!-- Lado Esquerdo: Formulário -->
         <div>
           <div class="card">
             <div class="card-title">
@@ -257,7 +290,6 @@
           </div>
         </div>
 
-        <!-- Lado Direito: Preview -->
         <div>
           <div id="viewMonitoria" class="preview-container">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
@@ -316,7 +348,7 @@
       </div>
     </section>
 
-    <!-- SEÇÃO 2: HISTÓRICO GERAL (Oculto por padrão, ativado via Menu) -->
+    <!-- SEÇÃO 2: HISTÓRICO GERAL -->
     <section id="section-historico" class="content-section">
       <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
         <div class="card-title">
@@ -331,12 +363,12 @@
   </main>
 </div>
 
-<!-- TEMPLATE DE ELEMENTO DO CHECKLIST GUIADO (POP-OUT) -->
+<!-- TEMPLATE POP-OUT -->
 <div id="checklistTemplate" style="display: none;">
   <div class="checklist-container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #1a237e; padding-bottom: 6px;">
       <span style="font-weight:bold; color:#1a237e; font-size:15px;">📝 Checklist de Monitoria</span>
-      <button id="btnPopLimparCampos" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #c62828;">🗑️ Limpar</button>
+      <button id="btnPopLimparCampos" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #c62828; color: #fff; border: none; border-radius: 4px;">🗑️ Limpar</button>
     </div>
     
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -406,7 +438,7 @@
   auth.onAuthStateChanged((user) => {
     if (user) {
       document.getElementById('login-overlay').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'flex'; // Mudou para flex por conta do Layout Dashboard
+      document.getElementById('appContainer').style.display = 'flex'; 
       carregarHistoricoDaNuvem(); 
     } else {
       document.getElementById('login-overlay').style.display = 'flex';
@@ -414,9 +446,8 @@
     }
   });
 
-  // FUNÇÕES DE NAVEGAÇÃO DO MENU LATERAL
+  // FUNÇÕES DE NAVEGAÇÃO E LAYOUT
   function switchSection(section) {
-    // Remove ativo de todas as seções e menus
     document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
 
@@ -427,8 +458,12 @@
     } else if (section === 'historico') {
       document.getElementById('section-historico').classList.add('active');
       document.getElementById('menuHistorico').classList.add('active');
-      document.getElementById('sectionTitle').innerText = 'Histórico Geral';
+      document.getElementById('sectionTitle').innerText = 'Histórico em Nuvem';
     }
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
   }
 
   // FUNÇÕES DE AUTENTICAÇÃO
@@ -546,7 +581,11 @@
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
-    document.getElementById('themeToggle').innerText = newTheme === 'dark' ? '☀️ Tema Claro' : '🌙 Modo Escuro';
+    
+    // Altera o texto e o ícone do botão no menu lateral
+    document.getElementById('themeIcon').innerText = newTheme === 'dark' ? '☀️' : '🌙';
+    document.getElementById('themeText').innerText = newTheme === 'dark' ? 'Tema Claro' : 'Modo Escuro';
+    
     localStorage.setItem('theme_preference', newTheme);
   }
 
@@ -698,7 +737,6 @@
     if(item) {
       currentEditingId = item.id; document.getElementById('rawInput').value = item.text;
       
-      // Muda para a seção da Monitoria e aplica o tipo
       switchSection('monitoria');
       if (item.tipo) setModo(item.tipo); 
       
@@ -761,7 +799,11 @@
   }
 
   window.onload = function() {
-    if (localStorage.getItem('theme_preference') === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); document.getElementById('themeToggle').innerText = '☀️ Tema Claro'; }
+    if (localStorage.getItem('theme_preference') === 'dark') { 
+      document.documentElement.setAttribute('data-theme', 'dark'); 
+      document.getElementById('themeIcon').innerText = '☀️';
+      document.getElementById('themeText').innerText = 'Tema Claro';
+    }
     document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
   };
 </script>
