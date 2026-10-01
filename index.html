@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerador de Monitoria e Reorientação</title>
   
-  <!-- Firebase Compat v10 (Para facilitar a integração sem quebrar o HTML atual) -->
+  <!-- Firebase Compat v10 -->
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
@@ -121,6 +121,8 @@
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
     .history-item:hover { background-color: var(--history-hover); }
     .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
+    
+    .checklist-container { background: var(--card-bg); padding: 12px; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -160,6 +162,7 @@
         <div class="card-title">
           <span>1. Cole o Relatório Bruto</span>
           <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="abrirPopOutWindow()">🪟 Pop-up Tradicional</button>
             <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Copiar Máscara</button>
           </div>
         </div>
@@ -217,7 +220,7 @@
       <div id="viewMonitoria" class="preview-container">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <button class="btn btn-secondary" onclick="copiarFichaFormatada()">📋 Copiar Formatado</button>
-          <button class="btn btn-purple" onclick="copiarFichaComoImagem()">🖼️️ Copiar Imagem</button>
+          <button class="btn btn-purple" onclick="copiarFichaComoImagem()">🖼 Copiar Imagem</button>
         </div>
 
         <div id="fichaRender" class="sheet">
@@ -282,10 +285,57 @@
   </div>
 </div>
 
+<!-- TEMPLATE DE ELEMENTO DO CHECKLIST GUIADO (POP-OUT) -->
+<div id="checklistTemplate" style="display: none;">
+  <div class="checklist-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #1a237e; padding-bottom: 6px;">
+      <span style="font-weight:bold; color:#1a237e; font-size:15px;">📝 Checklist de Monitoria</span>
+      <button id="btnPopLimparCampos" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #c62828;">🗑️ Limpar</button>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+      <div><label style="font-size:11px; font-weight:bold; display:block;">DATA REALIZADA</label><input type="text" id="popDataRealizada" readonly tabindex="-1" style="width:100%; padding:6px; font-size:12px;"></div>
+      <div><label style="font-size:11px; font-weight:bold; display:block;">OPERADOR(A)</label><input type="text" id="popOperador" placeholder="Nome" style="width:100%; padding:6px; font-size:12px;"></div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+      <div><label style="font-size:11px; font-weight:bold; display:block;">DATA/HORA</label><input type="text" id="popDataHora" placeholder="25/09/2026 14:30" style="width:100%; padding:6px; font-size:12px;"></div>
+      <div><label style="font-size:11px; font-weight:bold; display:block;">PROTOCOLO</label><input type="text" id="popProtocolo" placeholder="Número" style="width:100%; padding:6px; font-size:12px;"></div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+      <div><label style="font-size:11px; font-weight:bold; display:block;">NOTA MONIT.</label><input type="text" id="popNotaMonitoria" placeholder="100 / 72.22" style="width:100%; padding:6px; font-size:12px;"></div>
+      <div><label style="font-size:11px; font-weight:bold; display:block;">NOTA AQM</label><input type="text" id="popNotaAqm" placeholder="100 / 72,22" style="width:100%; padding:6px; font-size:12px;"></div>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px; font-weight:bold; display:block;">M.O.</label>
+      <input type="text" id="popMo" placeholder="M.O." style="width:100%; padding:6px; font-size:12px;">
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px; font-weight:bold; display:block;">SOLICITAÇÃO / ATENDIMENTO</label>
+      <textarea id="popAtendimento" rows="3" placeholder="Descrição do atendimento..." style="width:100%; padding:6px; font-size:12px;"></textarea>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px; font-weight:bold; display:block;">OBSERVAÇÃO(ÕES)</label>
+      <textarea id="popObservacao" rows="2" placeholder="-Não se aplica." style="width:100%; padding:6px; font-size:12px;"></textarea>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px; font-weight:bold; display:block;">OCORRÊNCIA(S)</label>
+      <textarea id="popOcorrencia" rows="2" placeholder="-Não se aplica." style="width:100%; padding:6px; font-size:12px;"></textarea>
+    </div>
+
+    <button id="btnEnviarPopout" style="width:100%; background:#2e7d32; color:#fff; font-weight:bold; padding:10px; border:none; border-radius:6px; cursor:pointer;">🚀 Enviar para Ficha e Salvar</button>
+  </div>
+</div>
+
 <div id="toast" class="toast">Texto copiado com sucesso!</div>
 
 <script>
-  // CONFIGURAÇÃO FIREBASE (As suas chaves ativadas)
+  // CONFIGURAÇÃO FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyBDOwfE13NuGGyfQ4LxFgKuXt5mtsGal4w",
     authDomain: "painelmonitoria.firebaseapp.com",
@@ -295,7 +345,6 @@
     appId: "1:148347554120:web:c92757d4939425af0e4b7d"
   };
 
-  // Inicializa o Firebase
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
@@ -330,8 +379,90 @@
     });
   }
 
-  function fazerLogout() {
-    auth.signOut();
+  function fazerLogout() { auth.signOut(); }
+
+  // LÓGICA DO POP-OUT
+  function abrirPopOutWindow() {
+    const popWin = window.open("", "ChecklistPopout", "width=450,height=650,resizable=yes,scrollbars=yes");
+    if (!popWin) { showToast("⚠️ Permita pop-ups no seu navegador."); return; }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    popWin.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Checklist - Monitoria</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; background: ${isDark ? '#1e1e1e' : '#f0f2f5'}; color: ${isDark ? '#e0e0e0' : '#333'}; margin: 0; }
+          input, textarea { width: 100%; padding: 8px; font-size: 13px; margin-top: 2px; box-sizing: border-box; background: ${isDark ? '#2d2d2d' : '#fff'}; color: ${isDark ? '#e0e0e0' : '#333'}; border: 1px solid ${isDark ? '#444' : '#ccc'}; border-radius: 4px; }
+          input[readonly] { background-color: ${isDark ? '#383838' : '#e9ecef'} !important; cursor: not-allowed; opacity: 0.85; font-weight: bold; }
+          label { font-size: 11px; font-weight: bold; margin-top: 6px; display: block; color: ${isDark ? '#aaa' : '#555'}; }
+          button { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; font-size: 14px; }
+          button:hover { background: #1b5e20; }
+        </style>
+      </head>
+      <body>
+        ${document.getElementById('checklistTemplate').innerHTML}
+      </body>
+      </html>
+    `);
+    popWin.document.close();
+
+    setTimeout(() => {
+      popWin.document.getElementById('popDataRealizada').value = getHojeDataFormatada();
+      popWin.document.getElementById('popOperador').value = document.getElementById('fieldOperador').value;
+      popWin.document.getElementById('popDataHora').value = document.getElementById('fieldDataHora').value;
+      popWin.document.getElementById('popProtocolo').value = document.getElementById('fieldProtocolo').value;
+      popWin.document.getElementById('popNotaMonitoria').value = document.getElementById('fieldNotaMonitoria').value;
+      popWin.document.getElementById('popNotaAqm').value = document.getElementById('fieldNotaAqm').value;
+      popWin.document.getElementById('popMo').value = document.getElementById('fieldMo').value;
+      popWin.document.getElementById('popAtendimento').value = document.getElementById('fieldAtendimento').value;
+      popWin.document.getElementById('popObservacao').value = document.getElementById('fieldObservacao').value;
+      popWin.document.getElementById('popOcorrencia').value = document.getElementById('fieldOcorrencia').value;
+
+      popWin.document.getElementById('btnPopLimparCampos').onclick = function() { limparCamposPopout(popWin.document); };
+      popWin.document.getElementById('btnEnviarPopout').onclick = function() { enviarDadosDoPopout(popWin.document); };
+    }, 150);
+  }
+
+  function limparCamposPopout(docContext) {
+    docContext.getElementById('popDataRealizada').value = getHojeDataFormatada();
+    ['popOperador','popDataHora','popProtocolo','popNotaMonitoria','popNotaAqm','popMo','popAtendimento','popObservacao','popOcorrencia'].forEach(id => docContext.getElementById(id).value = '');
+  }
+
+  function enviarDadosDoPopout(docContext) {
+    const dtRealizada = getHojeDataFormatada();
+    const op = docContext.getElementById('popOperador').value.trim();
+    const dtHora = docContext.getElementById('popDataHora').value.trim();
+    const prot = docContext.getElementById('popProtocolo').value.trim();
+    const notaMon = docContext.getElementById('popNotaMonitoria').value.trim();
+    const notaAqm = docContext.getElementById('popNotaAqm').value.trim();
+    const mo = docContext.getElementById('popMo').value.trim();
+    const atend = docContext.getElementById('popAtendimento').value.trim();
+    const obs = docContext.getElementById('popObservacao').value.trim();
+    const ocor = docContext.getElementById('popOcorrencia').value.trim();
+
+    document.getElementById('fieldDataRealizada').value = dtRealizada;
+    document.getElementById('fieldOperador').value = op;
+    document.getElementById('fieldDataHora').value = dtHora;
+    document.getElementById('fieldProtocolo').value = prot;
+    document.getElementById('fieldNotaMonitoria').value = notaMon;
+    document.getElementById('fieldNotaAqm').value = notaAqm;
+    document.getElementById('fieldMo').value = mo;
+    document.getElementById('fieldAtendimento').value = atend;
+    document.getElementById('fieldObservacao').value = obs;
+    document.getElementById('fieldOcorrencia').value = ocor;
+
+    const rawFormatado = `Realizada: ${dtRealizada}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${notaAqm}\nMonitoria: ${notaMon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
+    document.getElementById('rawInput').value = rawFormatado;
+
+    limparErrosVisuais(); atualizarInterface();
+    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Preencha os campos obrigatórios para salvar!'); return; }
+
+    salvarNoHistoricoFirebase(rawFormatado, prot);
+    showToast('🚀 Ficha gerada via Pop-up e salva na Nuvem!');
+    limparCamposPopout(docContext);
   }
 
   // UTILS & HELPERS
@@ -343,15 +474,10 @@
   }
 
   function showToast(msg) {
-    const toast = document.getElementById('toast');
-    toast.innerText = msg;
-    toast.style.display = 'block';
-    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    const toast = document.getElementById('toast'); toast.innerText = msg; toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 3000);
   }
 
-  function escapeHtml(text) {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
   function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -411,10 +537,8 @@
     document.getElementById('fieldOcorrencia').value = (ocorrenciaMatch && ocorrenciaMatch[1].trim()) ? ocorrenciaMatch[1].trim() : '';
 
     atualizarInterface();
-    if (verificarCamposFaltantes().length > 0) {
-      showToast('⚠️ Informações incompletas! Preencha os campos em vermelho para salvar.');
-      return;
-    }
+    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Informações incompletas! Preencha os campos em vermelho para salvar.'); return; }
+    
     salvarNoHistoricoFirebase(raw, protNum);
     showToast('⚡ Dados processados e salvos com sucesso!');
   }
@@ -441,7 +565,7 @@
     document.getElementById('reorientRender').innerText = `${document.getElementById('fieldSaudacao').value}, ${document.getElementById('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${document.getElementById('fieldOperador').value || '---'}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${document.getElementById('fieldProtocolo').value || '---'}\nOperador(a): ${document.getElementById('fieldOperador').value || '---'}\n\nSOLICITAÇÃO:\n${document.getElementById('fieldAtendimento').value || '---'}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
   }
 
-  // INTEGRAÇÃO FIRESTORE (Substitui LocalStorage)
+  // INTEGRAÇÃO FIRESTORE
   async function salvarNoHistoricoFirebase(rawText, protocoloVal) {
     if (!auth.currentUser) return;
     const uid = auth.currentUser.uid;
@@ -456,14 +580,9 @@
     };
 
     try {
-      if (currentEditingId) {
-        await db.collection("monitorias").doc(currentEditingId).update(docData);
-      } else {
-        await db.collection("monitorias").add(docData);
-      }
-      currentEditingId = null; 
-      activeDateTab = docData.data;
-      carregarHistoricoDaNuvem(); 
+      if (currentEditingId) { await db.collection("monitorias").doc(currentEditingId).update(docData); } 
+      else { await db.collection("monitorias").add(docData); }
+      currentEditingId = null; activeDateTab = docData.data; carregarHistoricoDaNuvem(); 
     } catch (e) { showToast("Erro ao salvar no banco."); }
   }
 
@@ -473,7 +592,6 @@
       const snapshot = await db.collection("monitorias").where("userId", "==", auth.currentUser.uid).get();
       registrosNuvem = [];
       snapshot.forEach(doc => registrosNuvem.push({ id: doc.id, ...doc.data() }));
-      // Ordenar do mais recente para o mais antigo pelo timestamp gerado na nuvem
       registrosNuvem.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       renderizarAbasELista();
     } catch(e) { console.error(e); }
@@ -515,10 +633,8 @@
   function recarregarHistorico(id) {
     const item = registrosNuvem.find(i => i.id === id);
     if(item) {
-      currentEditingId = item.id;
-      document.getElementById('rawInput').value = item.text;
-      if (item.tipo) setModo(item.tipo);
-      processarTexto(); showToast('Reaberto para edição.');
+      currentEditingId = item.id; document.getElementById('rawInput').value = item.text;
+      if (item.tipo) setModo(item.tipo); processarTexto(); showToast('Reaberto para edição.');
     }
   }
 
@@ -542,9 +658,7 @@
   async function copiarFichaComoImagem() {
     showToast('Gerando imagem...');
     const canvas = await html2canvas(document.getElementById('fichaRender'), { scale: 2, backgroundColor: '#ffffff' });
-    canvas.toBlob(async (blob) => {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('🖼️ Imagem PNG copiada!');
-    }, 'image/png');
+    canvas.toBlob(async (blob) => { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('🖼️ Imagem PNG copiada!'); }, 'image/png');
   }
 
   async function copiarMascaraParaClipboard() {
