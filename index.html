@@ -27,6 +27,10 @@
       --history-hover: #f5f5f5;
       --error-bg: #ffebee;
       --error-border: #d32f2f;
+      --sidebar-bg: #1a237e;
+      --sidebar-text: #ffffff;
+      --sidebar-hover: #283593;
+      --sidebar-active: #3949ab;
     }
 
     [data-theme="dark"] {
@@ -41,35 +45,51 @@
       --history-hover: #2a2a2a;
       --error-bg: #3c1a1d;
       --error-border: #f44336;
+      --sidebar-bg: #1e1e1e;
+      --sidebar-text: #e0e0e0;
+      --sidebar-hover: #2d2d2d;
+      --sidebar-active: #3949ab;
     }
 
     * { box-sizing: border-box; transition: background-color 0.2s, color 0.2s; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); }
-    .app-container { max-width: 1200px; margin: 0 auto; display: none; } /* Oculto até logar */
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; color: var(--text-color); height: 100vh; overflow: hidden; }
     
+    /* LAYOUT DASHBOARD */
+    .dashboard-layout { display: none; height: 100vh; width: 100vw; } /* Flex applied by JS */
+    
+    /* MENU LATERAL (SIDEBAR) */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 100; }
+    .sidebar-header { padding: 25px 20px; font-size: 20px; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 1px; }
+    .sidebar-menu { list-style: none; padding: 15px 10px; margin: 0; flex: 1; }
+    .sidebar-menu li { padding: 14px 18px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+    .sidebar-menu li:hover { background-color: var(--sidebar-hover); }
+    .sidebar-menu li.active { background-color: var(--sidebar-active); border-left: 4px solid #fff; }
+    .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+
+    /* CONTEÚDO PRINCIPAL */
+    .main-content { flex: 1; overflow-y: auto; padding: 30px; }
+    .content-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .content-section.active { display: block; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
     /* TELA DE LOGIN */
-    #login-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--bg-color); z-index: 9999;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .login-box {
-      background: var(--card-bg); padding: 40px 30px; border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 100%; max-width: 350px; text-align: center;
-    }
+    #login-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .login-box { background: var(--card-bg); padding: 40px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 100%; max-width: 350px; text-align: center; }
     .login-box h2 { margin-top: 0; color: var(--title-color); }
     .login-box input { margin-bottom: 15px; }
 
-    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    /* COMPONENTES GERAIS */
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
     .header-title { margin: 0; color: var(--title-color); font-weight: 700; font-size: 24px; }
-
+    
     .counters-container { display: flex; gap: 10px; align-items: center; }
     .counter-badge { background-color: #1a237e; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
     .counter-badge.today { background-color: #2e7d32; }
     .counter-number { background: #ffffff; color: #333; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
 
     .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } .dashboard-layout { flex-direction: column; } .sidebar { width: 100%; height: auto; } }
     
     .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; }
     .card-title { font-size: 16px; font-weight: bold; color: var(--title-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -91,12 +111,15 @@
     .btn-warning { background: #e65100; }
     .btn-teal { background: #00796b; }
     .btn-outline { background: transparent; color: var(--title-color); border: 1px solid var(--title-color); }
-    .btn-danger { background: #c62828; padding: 6px 10px; font-size: 11px; }
+    .btn-sidebar { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+    .btn-sidebar:hover { background: rgba(255,255,255,0.1); }
+    .btn-danger { background: #c62828; }
     .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
     .btn-block { width: 100%; }
 
-    .mode-selector { display: flex; gap: 10px; margin-bottom: 15px; }
-    .mode-btn { flex: 1; padding: 10px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; }
+    /* SELETOR DE MODO DENTRO DA SEÇÃO MONITORIA */
+    .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+    .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
     .mode-btn.active { background: #1a237e; color: #ffffff; }
 
     .date-tabs-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); }
@@ -117,11 +140,11 @@
 
     .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
 
-    .history-list { max-height: 250px; overflow-y: auto; margin-top: 5px; }
-    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+    .history-list { max-height: calc(100vh - 300px); overflow-y: auto; margin-top: 5px; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
     .history-item:hover { background-color: var(--history-hover); }
-    .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
     
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
     .checklist-container { background: var(--card-bg); padding: 12px; border-radius: 8px; }
   </style>
 </head>
@@ -138,151 +161,174 @@
   </div>
 </div>
 
-<div class="app-container" id="appContainer">
-  <div class="header-bar">
-    <h2 class="header-title">📋 PAINEL DE MONITORIA & REORIENTAÇÃO</h2>
-    <div style="display: flex; align-items: center; gap: 12px;">
+<!-- ESTRUTURA DO DASHBOARD -->
+<div class="dashboard-layout" id="appContainer">
+  
+  <!-- MENU LATERAL -->
+  <aside class="sidebar">
+    <div class="sidebar-header">🌟 Painel QA</div>
+    <ul class="sidebar-menu">
+      <li class="active" id="menuMonitoria" onclick="switchSection('monitoria')">📝 Realizar Monitoria</li>
+      <li id="menuHistorico" onclick="switchSection('historico')">📜 Histórico em Nuvem</li>
+    </ul>
+    <div class="sidebar-footer">
+      <button class="btn btn-sidebar btn-block" id="themeToggle" onclick="toggleTheme()" style="margin-bottom: 10px;">🌙 Modo Escuro</button>
+      <button class="btn btn-danger btn-block" onclick="fazerLogout()">Sair do Sistema</button>
+    </div>
+  </aside>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-content">
+    <div class="header-bar">
+      <h2 class="header-title" id="sectionTitle">Realizar Monitoria</h2>
       <div class="counters-container">
         <div class="counter-badge today"><span>Hoje:</span><span id="todayCounter" class="counter-number">0</span></div>
         <div class="counter-badge"><span>Total:</span><span id="totalCounter" class="counter-number">0</span></div>
       </div>
-      <button class="btn btn-outline" id="themeToggle" onclick="toggleTheme()">🌙 Modo Escuro</button>
-      <button class="btn btn-danger" onclick="fazerLogout()">Sair</button>
-    </div>
-  </div>
-
-  <div class="mode-selector">
-    <div id="btnModeMonitoria" class="mode-btn active" onclick="setModo('MONITORIA')">Ficha Visual de Monitoria</div>
-    <div id="btnModeReorientacao" class="mode-btn" onclick="setModo('REORIENTACAO')">E-mail de Reorientação</div>
-  </div>
-
-  <div class="grid-layout">
-    <div>
-      <div class="card">
-        <div class="card-title">
-          <span>1. Cole o Relatório Bruto</span>
-          <div style="display: flex; gap: 6px;">
-            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="abrirPopOutWindow()">🪟 Pop-up Tradicional</button>
-            <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Copiar Máscara</button>
-          </div>
-        </div>
-        <textarea id="rawInput" rows="9" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px;">
-          <button class="btn btn-block" onclick="processarTexto()">⚡ Processar Dados</button>
-          <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">2. Dados do Registro</div>
-        <div class="form-row" id="groupReorientOptions" style="display: none;">
-          <div class="form-group">
-            <label>Saudação / Período</label>
-            <select id="fieldSaudacao" onchange="atualizarInterface()">
-              <option value="Boa tarde">Boa tarde</option>
-              <option value="Bom dia">Bom dia</option>
-              <option value="Boa noite">Boa noite</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Supervisor Responsável</label>
-            <select id="fieldSupervisor" onchange="atualizarInterface()">
-              <option value="Kelvin">Kelvin</option>
-              <option value="Eliane">Eliane</option>
-              <option value="José">José</option>
-              <option value="Leidiane">Leidiane</option>
-              <option value="Diogo">Diogo</option>
-              <option value="Pamela">Pamela</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group"><label>Data Realizada</label><input type="text" id="fieldDataRealizada" readonly tabindex="-1"></div>
-          <div class="form-group"><label>Operador(a) *</label><input type="text" id="fieldOperador" oninput="validarECarregar()"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Data/Hora Atendimento *</label><input type="text" id="fieldDataHora" oninput="validarECarregar()"></div>
-          <div class="form-group"><label>Protocolo *</label><input type="text" id="fieldProtocolo" oninput="validarECarregar()"></div>
-        </div>
-        <div class="form-row" id="rowNotas">
-          <div class="form-group"><label>Nota Monitoria *</label><input type="text" id="fieldNotaMonitoria" oninput="validarECarregar()"></div>
-          <div class="form-group"><label>Nota AQM</label><input type="text" id="fieldNotaAqm" oninput="validarECarregar()"></div>
-        </div>
-        <div class="form-group"><label>M.O. *</label><input type="text" id="fieldMo" oninput="validarECarregar()"></div>
-        <div class="form-group"><label>Atendimento / Solicitação *</label><textarea id="fieldAtendimento" rows="3" oninput="validarECarregar()"></textarea></div>
-        <div class="form-group"><label>Observação(ões)</label><textarea id="fieldObservacao" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
-        <div class="form-group"><label>Ocorrência(s)</label><textarea id="fieldOcorrencia" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
-      </div>
     </div>
 
-    <div>
-      <div id="viewMonitoria" class="preview-container">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-          <button class="btn btn-secondary" onclick="copiarFichaFormatada()">📋 Copiar Formatado</button>
-          <button class="btn btn-purple" onclick="copiarFichaComoImagem()">🖼 Copiar Imagem</button>
-        </div>
+    <!-- SEÇÃO 1: REALIZAR MONITORIA -->
+    <section id="section-monitoria" class="content-section active">
+      
+      <!-- BOTÕES AGORA RESTRITOS A ESTA ABA -->
+      <div class="mode-selector">
+        <div id="btnModeMonitoria" class="mode-btn active" onclick="setModo('MONITORIA')">Ficha Visual de Monitoria</div>
+        <div id="btnModeReorientacao" class="mode-btn" onclick="setModo('REORIENTACAO')">E-mail de Reorientação</div>
+      </div>
 
-        <div id="fichaRender" class="sheet">
-          <div class="sheet-header">FEEDBACK MONITORIA</div>
-          <div class="sheet-subheader">Data de Realização: <span id="outDataRealizada">---</span></div>
-          <table class="sheet-table">
-            <tr><td colspan="2"><strong>Operador(a):</strong> <span id="outOperador">---</span></td></tr>
-            <tr class="bg-gray">
-              <td width="50%"><strong>NOTA MONITORIA:</strong> <span id="outNotaMonitoria" class="score-badge">--</span></td>
-              <td width="50%"><strong>NOTA AQM:</strong> <span id="outNotaAqm" class="score-badge">--</span></td>
-            </tr>
-          </table>
-          <table class="sheet-table">
-            <tr>
-              <td width="50%"><strong>PROTOCOLO:</strong> <br><span id="outProtocolo">---</span></td>
-              <td width="50%"><strong>M.O.:</strong> <br><span id="outMo">---</span></td>
-            </tr>
-            <tr><td colspan="2"><strong>DATA DO ATENDIMENTO:</strong> <span id="outDataHora">---</span></td></tr>
-          </table>
-          <table class="sheet-table">
-            <tr><th>DESCRIÇÃO DO ATENDIMENTO</th></tr>
-            <tr><td><div id="outAtendimento">---</div></td></tr>
-          </table>
-          <table class="sheet-table">
-            <tr><th>OBSERVAÇÕES / PONTOS DE ATENÇÃO</th></tr>
-            <tr>
-              <td>
-                <p style="margin: 0 0 8px 0;"><strong>✨ Ponto Forte:</strong><br>Seu empenho reforça seu potencial. Com constância e foco, seus resultados serão cada vez maiores.</p>
-                <p style="margin: 0 0 8px 0;"><strong>💡 Observação(ões):</strong><br><span id="outObservacao">-Não se aplica.</span></p>
-                <p style="margin: 0;"><strong>🔍 Ocorrência(s):</strong><br><span id="outOcorrencia">-Não se aplica.</span></p>
-              </td>
-            </tr>
-          </table>
-          <div class="footer-warning">QUALQUER DÚVIDA OU CONTESTAÇÃO, ACIONAR SUA SUPERVISÃO! OBRIGADO</div>
-        </div>
-
-        <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 15px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <label style="margin: 0;">📝 Justificativa / Ocorrência Rápida</label>
-            <button class="btn btn-teal" style="padding: 4px 10px; font-size: 11px;" onclick="copiarTextoJustificativa()">📋 Copiar Justificativa</button>
+      <div class="grid-layout">
+        <!-- Lado Esquerdo: Formulário -->
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>1. Cole o Relatório Bruto</span>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="abrirPopOutWindow()">🪟 Pop-up Tradicional</button>
+                <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Copiar Máscara</button>
+              </div>
+            </div>
+            <textarea id="rawInput" rows="7" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px;">
+              <button class="btn btn-block" onclick="processarTexto()">⚡ Processar Dados</button>
+              <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar</button>
+            </div>
           </div>
-          <div id="justificativaRender" class="output-box">---</div>
+
+          <div class="card">
+            <div class="card-title">2. Dados do Registro</div>
+            <div class="form-row" id="groupReorientOptions" style="display: none;">
+              <div class="form-group">
+                <label>Saudação / Período</label>
+                <select id="fieldSaudacao" onchange="atualizarInterface()">
+                  <option value="Boa tarde">Boa tarde</option>
+                  <option value="Bom dia">Bom dia</option>
+                  <option value="Boa noite">Boa noite</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Supervisor Responsável</label>
+                <select id="fieldSupervisor" onchange="atualizarInterface()">
+                  <option value="Kelvin">Kelvin</option>
+                  <option value="Eliane">Eliane</option>
+                  <option value="José">José</option>
+                  <option value="Leidiane">Leidiane</option>
+                  <option value="Diogo">Diogo</option>
+                  <option value="Pamela">Pamela</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group"><label>Data Realizada</label><input type="text" id="fieldDataRealizada" readonly tabindex="-1"></div>
+              <div class="form-group"><label>Operador(a) *</label><input type="text" id="fieldOperador" oninput="validarECarregar()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Data/Hora Atendimento *</label><input type="text" id="fieldDataHora" oninput="validarECarregar()"></div>
+              <div class="form-group"><label>Protocolo *</label><input type="text" id="fieldProtocolo" oninput="validarECarregar()"></div>
+            </div>
+            <div class="form-row" id="rowNotas">
+              <div class="form-group"><label>Nota Monitoria *</label><input type="text" id="fieldNotaMonitoria" oninput="validarECarregar()"></div>
+              <div class="form-group"><label>Nota AQM</label><input type="text" id="fieldNotaAqm" oninput="validarECarregar()"></div>
+            </div>
+            <div class="form-group"><label>M.O. *</label><input type="text" id="fieldMo" oninput="validarECarregar()"></div>
+            <div class="form-group"><label>Atendimento / Solicitação *</label><textarea id="fieldAtendimento" rows="2" oninput="validarECarregar()"></textarea></div>
+            <div class="form-group"><label>Observação(ões)</label><textarea id="fieldObservacao" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+            <div class="form-group"><label>Ocorrência(s)</label><textarea id="fieldOcorrencia" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+          </div>
+        </div>
+
+        <!-- Lado Direito: Preview -->
+        <div>
+          <div id="viewMonitoria" class="preview-container">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+              <button class="btn btn-secondary" onclick="copiarFichaFormatada()">📋 Copiar Formatado</button>
+              <button class="btn btn-purple" onclick="copiarFichaComoImagem()">🖼 Copiar Imagem</button>
+            </div>
+
+            <div id="fichaRender" class="sheet">
+              <div class="sheet-header">FEEDBACK MONITORIA</div>
+              <div class="sheet-subheader">Data de Realização: <span id="outDataRealizada">---</span></div>
+              <table class="sheet-table">
+                <tr><td colspan="2"><strong>Operador(a):</strong> <span id="outOperador">---</span></td></tr>
+                <tr class="bg-gray">
+                  <td width="50%"><strong>NOTA MONITORIA:</strong> <span id="outNotaMonitoria" class="score-badge">--</span></td>
+                  <td width="50%"><strong>NOTA AQM:</strong> <span id="outNotaAqm" class="score-badge">--</span></td>
+                </tr>
+              </table>
+              <table class="sheet-table">
+                <tr>
+                  <td width="50%"><strong>PROTOCOLO:</strong> <br><span id="outProtocolo">---</span></td>
+                  <td width="50%"><strong>M.O.:</strong> <br><span id="outMo">---</span></td>
+                </tr>
+                <tr><td colspan="2"><strong>DATA DO ATENDIMENTO:</strong> <span id="outDataHora">---</span></td></tr>
+              </table>
+              <table class="sheet-table">
+                <tr><th>DESCRIÇÃO DO ATENDIMENTO</th></tr>
+                <tr><td><div id="outAtendimento">---</div></td></tr>
+              </table>
+              <table class="sheet-table">
+                <tr><th>OBSERVAÇÕES / PONTOS DE ATENÇÃO</th></tr>
+                <tr>
+                  <td>
+                    <p style="margin: 0 0 8px 0;"><strong>✨ Ponto Forte:</strong><br>Seu empenho reforça seu potencial. Com constância e foco, seus resultados serão cada vez maiores.</p>
+                    <p style="margin: 0 0 8px 0;"><strong>💡 Observação(ões):</strong><br><span id="outObservacao">-Não se aplica.</span></p>
+                    <p style="margin: 0;"><strong>🔍 Ocorrência(s):</strong><br><span id="outOcorrencia">-Não se aplica.</span></p>
+                  </td>
+                </tr>
+              </table>
+              <div class="footer-warning">QUALQUER DÚVIDA OU CONTESTAÇÃO, ACIONAR SUA SUPERVISÃO! OBRIGADO</div>
+            </div>
+
+            <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 15px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="margin: 0;">📝 Justificativa Rápida</label>
+                <button class="btn btn-teal" style="padding: 4px 10px; font-size: 11px;" onclick="copiarTextoJustificativa()">📋 Copiar</button>
+              </div>
+              <div id="justificativaRender" class="output-box">---</div>
+            </div>
+          </div>
+
+          <div id="viewReorientacao" class="preview-container" style="display: none;">
+            <button class="btn btn-warning btn-block" style="margin-bottom: 15px;" onclick="copiarTextoReorientacao()">📋 Copiar Texto do E-mail</button>
+            <div id="reorientRender" class="output-box">---</div>
+          </div>
         </div>
       </div>
+    </section>
 
-      <div id="viewReorientacao" class="preview-container" style="display: none;">
-        <button class="btn btn-warning btn-block" style="margin-bottom: 15px;" onclick="copiarTextoReorientacao()">📋 Copiar Texto do E-mail</button>
-        <div id="reorientRender" class="output-box">---</div>
-      </div>
-
-      <div class="card" style="margin-top: 20px;">
+    <!-- SEÇÃO 2: HISTÓRICO GERAL (Oculto por padrão, ativado via Menu) -->
+    <section id="section-historico" class="content-section">
+      <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
         <div class="card-title">
-          <span>📜 Histórico Salvo na Nuvem</span>
-          <div style="display: flex; gap: 5px;">
-            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="exportarExcel()">📊 Exportar (.xlsx)</button>
-          </div>
+          <span>📜 Registros Salvos no Banco de Dados</span>
+          <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar para Excel (.xlsx)</button>
         </div>
         <div id="dateTabsContainer" class="date-tabs-container"></div>
-        <div id="historyContainer" class="history-list"></div>
+        <div id="historyContainer" class="history-list" style="flex: 1;"></div>
       </div>
-    </div>
-  </div>
+    </section>
+
+  </main>
 </div>
 
 <!-- TEMPLATE DE ELEMENTO DO CHECKLIST GUIADO (POP-OUT) -->
@@ -360,13 +406,30 @@
   auth.onAuthStateChanged((user) => {
     if (user) {
       document.getElementById('login-overlay').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'block';
+      document.getElementById('appContainer').style.display = 'flex'; // Mudou para flex por conta do Layout Dashboard
       carregarHistoricoDaNuvem(); 
     } else {
       document.getElementById('login-overlay').style.display = 'flex';
       document.getElementById('appContainer').style.display = 'none';
     }
   });
+
+  // FUNÇÕES DE NAVEGAÇÃO DO MENU LATERAL
+  function switchSection(section) {
+    // Remove ativo de todas as seções e menus
+    document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
+
+    if (section === 'monitoria') {
+      document.getElementById('section-monitoria').classList.add('active');
+      document.getElementById('menuMonitoria').classList.add('active');
+      document.getElementById('sectionTitle').innerText = 'Realizar Monitoria';
+    } else if (section === 'historico') {
+      document.getElementById('section-historico').classList.add('active');
+      document.getElementById('menuHistorico').classList.add('active');
+      document.getElementById('sectionTitle').innerText = 'Histórico Geral';
+    }
+  }
 
   // FUNÇÕES DE AUTENTICAÇÃO
   function fazerLogin() {
@@ -483,7 +546,7 @@
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
-    document.getElementById('themeToggle').innerText = newTheme === 'dark' ? '☀️ Modo Claro' : '🌙 Modo Escuro';
+    document.getElementById('themeToggle').innerText = newTheme === 'dark' ? '☀️ Tema Claro' : '🌙 Modo Escuro';
     localStorage.setItem('theme_preference', newTheme);
   }
 
@@ -619,7 +682,7 @@
     const filtrados = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
     listContainer.innerHTML = filtrados.map(item => `
       <div class="history-item">
-        <div><strong>${escapeHtml(item.operador)}</strong> <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)})</span></div>
+        <div><strong>${escapeHtml(item.operador)}</strong> <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em></span></div>
         <div style="display: flex; gap: 5px;">
           <button class="btn btn-outline" style="padding:3px 6px; font-size:11px;" onclick="recarregarHistorico('${item.id}')">Reabrir</button>
           <button class="btn-remove-item" onclick="excluirItemHistorico('${item.id}')">❌</button>
@@ -634,7 +697,12 @@
     const item = registrosNuvem.find(i => i.id === id);
     if(item) {
       currentEditingId = item.id; document.getElementById('rawInput').value = item.text;
-      if (item.tipo) setModo(item.tipo); processarTexto(); showToast('Reaberto para edição.');
+      
+      // Muda para a seção da Monitoria e aplica o tipo
+      switchSection('monitoria');
+      if (item.tipo) setModo(item.tipo); 
+      
+      processarTexto(); showToast('Reaberto para edição.');
     }
   }
 
@@ -693,7 +761,7 @@
   }
 
   window.onload = function() {
-    if (localStorage.getItem('theme_preference') === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); document.getElementById('themeToggle').innerText = '☀️ Modo Claro'; }
+    if (localStorage.getItem('theme_preference') === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); document.getElementById('themeToggle').innerText = '☀️ Tema Claro'; }
     document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
   };
 </script>
