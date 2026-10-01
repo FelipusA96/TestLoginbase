@@ -103,7 +103,7 @@
     @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } .dashboard-layout { flex-direction: column; } .sidebar { width: 100%; height: auto; } .sidebar.collapsed { width: 100%; } }
     
     .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; }
-    .card-title { font-size: 16px; font-weight: bold; color: var(--title-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-size: 16px; font-weight: bold; color: var(--title-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     
     textarea, input, select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--text-color); }
     textarea:focus, input:focus, select:focus { border-color: var(--title-color); outline: none; }
@@ -134,6 +134,9 @@
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
     .mode-btn.active { background: #1a237e; color: #ffffff; }
 
+    .gestor-filters-bar { background: var(--input-readonly-bg); padding: 12px; border-radius: 6px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: flex-end; }
+    @media (max-width: 800px) { .gestor-filters-bar { grid-template-columns: 1fr; } }
+
     .date-tabs-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); }
     .date-tab { padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 15px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; white-space: nowrap; }
     .date-tab.active { background: var(--title-color); color: #ffffff; border-color: var(--title-color); }
@@ -152,7 +155,7 @@
 
     .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
 
-    .history-list { max-height: calc(100vh - 300px); overflow-y: auto; margin-top: 5px; }
+    .history-list { max-height: calc(100vh - 420px); overflow-y: auto; margin-top: 5px; }
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
     .history-item:hover { background-color: var(--history-hover); }
     
@@ -346,16 +349,44 @@
       </div>
     </section>
 
-    <!-- SEÇÃO 2: HISTÓRICO GERAL -->
+    <!-- SEÇÃO 2: HISTÓRICO GERAL / ANÁLISE DO GESTOR -->
     <section id="section-historico" class="content-section">
       <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
         <div class="card-title">
           <span>📜 Registros Salvos no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel (.xlsx)</button>
-            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar (.txt)</button>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
+            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
           </div>
         </div>
+
+        <!-- PAINEL DE FILTROS AVANÇADOS DO GESTOR (MÊS, CICLO E OPERADOR) -->
+        <div id="gestorFilterContainer" class="gestor-filters-bar" style="display: none;">
+          <div class="form-group" style="margin:0;">
+            <label>Filtrar por Mês</label>
+            <select id="filtroMesGestor" onchange="aplicarFiltrosGestor()">
+              <option value="TODOS">📅 Todos os Meses</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Ciclo / Período Semanal</label>
+            <select id="filtroCicloGestor" onchange="aplicarFiltrosGestor()">
+              <option value="TODOS">🔄 Ciclo Completo / Mês Inteiro</option>
+              <option value="CICLO_1">1º Ciclo (Dias 01 a 03)</option>
+              <option value="CICLO_2">2º Ciclo (Dias 05 a 10)</option>
+              <option value="CICLO_3">3º Ciclo (Dias 12 a 17)</option>
+              <option value="CICLO_4">4º Ciclo (Dias 19 a 24)</option>
+              <option value="CICLO_5">5º Ciclo (Dias 26 a 31)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Operador Específico</label>
+            <select id="filtroOperadorGestor" onchange="aplicarFiltrosGestor()">
+              <option value="TODOS">👥 Todos da Equipe</option>
+            </select>
+          </div>
+        </div>
+
         <div id="dateTabsContainer" class="date-tabs-container"></div>
         <div id="historyContainer" class="history-list" style="flex: 1;"></div>
       </div>
@@ -433,6 +464,7 @@
   let currentEditingId = null;
   let activeDateTab = 'TODAS';
   let registrosNuvem = []; 
+  const emailGestor = 'gestor.monit@painel.com';
   const camposObrigatorios = ['fieldDataRealizada','fieldOperador','fieldDataHora','fieldProtocolo','fieldNotaMonitoria','fieldMo','fieldAtendimento'];
 
   // OBSERVAÇÃO DE LOGIN
@@ -440,6 +472,10 @@
     if (user) {
       document.getElementById('login-overlay').style.display = 'none';
       document.getElementById('appContainer').style.display = 'flex'; 
+
+      const isGestor = user.email.toLowerCase() === emailGestor;
+      document.getElementById('gestorFilterContainer').style.display = isGestor ? 'grid' : 'none';
+
       carregarHistoricoDaNuvem(); 
     } else {
       document.getElementById('login-overlay').style.display = 'flex';
@@ -447,7 +483,6 @@
     }
   });
 
-  // FUNÇÕES DE NAVEGAÇÃO E LAYOUT
   function switchSection(section) {
     document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
@@ -468,7 +503,7 @@
   function fazerLogin() {
     const user = document.getElementById('loginUser').value.trim();
     const pass = document.getElementById('loginPass').value;
-    const email = user + "@painel.com"; 
+    const email = user.includes('@') ? user : (user + "@painel.com"); 
     
     auth.signInWithEmailAndPassword(email, pass).catch((error) => {
       document.getElementById('loginError').style.display = 'block';
@@ -477,10 +512,9 @@
 
   function fazerLogout() { auth.signOut(); }
 
-  // LÓGICA DO POP-OUT
   function abrirPopOutWindow() {
     const popWin = window.open("", "ChecklistPopout", "width=450,height=650,resizable=yes,scrollbars=yes");
-    if (!popWin) { showToast("⚠️️ Permita pop-ups no seu navegador."); return; }
+    if (!popWin) { showToast("⚠️ Permita pop-ups no seu navegador."); return; }
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     popWin.document.write(`
@@ -554,10 +588,10 @@
     document.getElementById('rawInput').value = rawFormatado;
 
     limparErrosVisuais(); atualizarInterface();
-    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Preencha os campos obrigatórios para salvar!'); return; }
+    if (verificarCamposFaltantes().length > 0) { showToast('⚠️️ Preencha os campos obrigatórios!'); return; }
 
     verificarEProcessarSalvamento(rawFormatado, prot);
-    showToast('🚀 Ficha gerada via Pop-up e sincronizada na Nuvem!');
+    showToast('🚀 Ficha gerada via Pop-up e sincronizada!');
     limparCamposPopout(docContext);
   }
 
@@ -594,7 +628,6 @@
     atualizarInterface();
   }
 
-  // EXTRAÇÃO E SALVAMENTO INTELIGENTE (VERIFICA PROTOCOLO EXISTENTE)
   function processarEAutoSalvar() {
     const raw = document.getElementById('rawInput').value;
     if (!raw.trim()) { showToast('Cole algum texto primeiro.'); return; }
@@ -634,14 +667,9 @@
 
     atualizarInterface();
 
-    // Verifica se já existe um registro com este mesmo protocolo na nuvem para atualizar em vez de duplicar
     if (protNum) {
       const existente = registrosNuvem.find(i => i.protocolo === protNum);
-      if (existente) {
-        currentEditingId = existente.id; // Ativa o ID existente para atualizar
-      } else {
-        currentEditingId = null; // É um caso novo
-      }
+      if (existente) { currentEditingId = existente.id; } else { currentEditingId = null; }
     }
 
     if (verificarCamposFaltantes().length > 0) { 
@@ -674,7 +702,6 @@
     document.getElementById('reorientRender').innerText = `${document.getElementById('fieldSaudacao').value}, ${document.getElementById('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${document.getElementById('fieldOperador').value || '---'}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${document.getElementById('fieldProtocolo').value || '---'}\nOperador(a): ${document.getElementById('fieldOperador').value || '---'}\n\nSOLICITAÇÃO:\n${document.getElementById('fieldAtendimento').value || '---'}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
   }
 
-  // BOTÃO DE SALVAR MANUALMENTE (CORREÇÕES / ALTERAÇÕES MÍNIMAS)
   function salvarRegistroManualmente() {
     if (verificarCamposFaltantes().length > 0) { 
       showToast('⚠️ Preencha todos os campos obrigatórios antes de salvar.'); 
@@ -693,7 +720,6 @@
     
     const textoParaSalvar = `Realizada: ${getHojeDataFormatada()}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${aqm}\nMonitoria: ${mon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
     
-    // Assegura que se o protocolo já estiver na nuvem, atualiza o mesmo ID
     if (prot) {
       const existente = registrosNuvem.find(i => i.protocolo === prot);
       if (existente) currentEditingId = existente.id;
@@ -702,21 +728,21 @@
     verificarEProcessarSalvamento(textoParaSalvar, prot);
   }
 
-  // INTEGRAÇÃO COM FIRESTORE
   async function verificarEProcessarSalvamento(rawText, protocoloVal) {
     if (!auth.currentUser) {
       alert("Erro: Você não está logado no sistema.");
       return;
     }
     
-    const uid = auth.currentUser.uid;
+    const user = auth.currentUser;
     const docData = {
       protocolo: protocoloVal || Date.now().toString(),
       operador: document.getElementById('fieldOperador').value || 'Não identificado',
       data: getHojeDataFormatada(),
       text: rawText,
       tipo: modoAtual,
-      userId: uid,
+      userId: user.uid,
+      autorEmail: user.email,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -725,14 +751,11 @@
         await db.collection("monitorias").doc(currentEditingId).update(docData); 
         showToast("🔄 Registro atualizado com sucesso!");
       } else { 
-        // Dupla checagem de segurança por protocolo antes de criar novo
         const querySnapshot = await db.collection("monitorias")
-          .where("userId", "==", uid)
           .where("protocolo", "==", docData.protocolo)
           .get();
 
         if (!querySnapshot.empty) {
-          // Se já existe no banco, atualiza o primeiro encontrado em vez de duplicar
           const existingDocId = querySnapshot.docs[0].id;
           await db.collection("monitorias").doc(existingDocId).update(docData);
           showToast("🔄 Protocolo já existia: registro atualizado!");
@@ -743,7 +766,7 @@
       }
       
       currentEditingId = null; 
-      activeDateTab = docData.data; 
+      activeDateTab = 'TODAS'; 
       carregarHistoricoDaNuvem(); 
       
     } catch (error) { 
@@ -755,39 +778,125 @@
   async function carregarHistoricoDaNuvem() {
     if (!auth.currentUser) return;
     try {
-      const snapshot = await db.collection("monitorias").where("userId", "==", auth.currentUser.uid).get();
+      const user = auth.currentUser;
+      const isGestor = user.email.toLowerCase() === emailGestor;
+      
+      let snapshot;
+      if (isGestor) {
+        snapshot = await db.collection("monitorias").get();
+      } else {
+        snapshot = await db.collection("monitorias").where("userId", "==", user.uid).get();
+      }
+
       registrosNuvem = [];
       snapshot.forEach(doc => registrosNuvem.push({ id: doc.id, ...doc.data() }));
       registrosNuvem.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      
+      if (isGestor) {
+        popularFiltrosGestor();
+      }
+
       renderizarAbasELista();
     } catch(error) { 
       console.error("Erro ao carregar histórico:", error);
     }
   }
 
+  function popularFiltrosGestor() {
+    // Meses disponíveis
+    const selectMes = document.getElementById('filtroMesGestor');
+    const mesesSet = new Set();
+    registrosNuvem.forEach(i => {
+      if (i.data) {
+        const partes = i.data.split('/');
+        if (partes.length === 3) mesesSet.add(`${partes[1]}/${partes[2]}`); // MM/AAAA
+      }
+    });
+    const mesesUnicos = [...mesesSet].sort();
+    let htmlMes = `<option value="TODOS">📅 Todos os Meses (${registrosNuvem.length})</option>`;
+    mesesUnicos.forEach(m => {
+      htmlMes += `<option value="${m}">Mês: ${m}</option>`;
+    });
+    selectMes.innerHTML = htmlMes;
+
+    // Operadores disponíveis
+    const selectOp = document.getElementById('filtroOperadorGestor');
+    const opsSet = new Set(registrosNuvem.map(i => i.operador).filter(Boolean));
+    const opsUnicos = [...opsSet].sort();
+    let htmlOp = `<option value="TODOS">👥 Todos da Equipe</option>`;
+    opsUnicos.forEach(op => {
+      htmlOp += `<option value="${op}">${op}</option>`;
+    });
+    selectOp.innerHTML = htmlOp;
+  }
+
+  function aplicarFiltrosGestor() {
+    activeDateTab = 'TODAS';
+    renderizarAbasELista();
+  }
+
   function renderizarAbasELista() {
     const dataHoje = getHojeDataFormatada();
-    document.getElementById('todayCounter').innerText = registrosNuvem.filter(i => i.data === dataHoje).length;
-    document.getElementById('totalCounter').innerText = registrosNuvem.length;
+    const user = auth.currentUser;
+    const isGestor = user && user.email.toLowerCase() === emailGestor;
+
+    let listaParaExibir = registrosNuvem;
+
+    if (isGestor) {
+      const mesFiltro = document.getElementById('filtroMesGestor').value;
+      const cicloFiltro = document.getElementById('filtroCicloGestor').value;
+      const opFiltro = document.getElementById('filtroOperadorGestor').value;
+
+      // 1. Filtro por Operador
+      if (opFiltro !== 'TODAS') {
+        listaParaExibir = listaParaExibir.filter(i => i.operador === opFiltro);
+      }
+
+      // 2. Filtro por Mês (MM/AAAA)
+      if (mesFiltro !== 'TODAS') {
+        listaParaExibir = listaParaExibir.filter(i => {
+          if (!i.data) return false;
+          const partes = i.data.split('/');
+          return `${partes[1]}/${partes[2]}` === mesFiltro;
+        });
+      }
+
+      // 3. Filtro por Ciclo de Dias da Semana
+      if (cicloFiltro !== 'TODAS') {
+        listaParaExibir = listaParaExibir.filter(i => {
+          if (!i.data) return false;
+          const dia = parseInt(i.data.split('/')[0], 10);
+          if (cicloFiltro === 'CICLO_1') return dia >= 1 && dia <= 3;
+          if (cicloFiltro === 'CICLO_2') return dia >= 5 && dia <= 10;
+          if (cicloFiltro === 'CICLO_3') return dia >= 12 && dia <= 17;
+          if (cicloFiltro === 'CICLO_4') return dia >= 19 && dia <= 24;
+          if (cicloFiltro === 'CICLO_5') return dia >= 26 && dia <= 31;
+          return true;
+        });
+      }
+    }
+
+    document.getElementById('todayCounter').innerText = listaParaExibir.filter(i => i.data === dataHoje).length;
+    document.getElementById('totalCounter').innerText = listaParaExibir.length;
 
     const tabsContainer = document.getElementById('dateTabsContainer');
     const listContainer = document.getElementById('historyContainer');
-    if (registrosNuvem.length === 0) {
+    if (listaParaExibir.length === 0) {
       tabsContainer.innerHTML = ''; 
-      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado na nuvem.<br><small>Os registros que você salvar aparecerão aqui.</small></div>'; 
+      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este filtro.<br><small>Tente alterar o Mês, Ciclo ou Operador.</small></div>'; 
       return;
     }
 
-    const datasUnicas = [...new Set(registrosNuvem.map(i => i.data))];
-    let tabsHtml = `<div class="date-tab ${activeDateTab === 'TODAS' ? 'active' : ''}" onclick="setDateTab('TODAS')">Todas (${registrosNuvem.length})</div>`;
+    const datasUnicas = [...new Set(listaParaExibir.map(i => i.data))];
+    let tabsHtml = `<div class="date-tab ${activeDateTab === 'TODAS' ? 'active' : ''}" onclick="setDateTab('TODAS')">Todas (${listaParaExibir.length})</div>`;
     datasUnicas.forEach(dt => {
-      const c = registrosNuvem.filter(i => i.data === dt).length;
+      const c = listaParaExibir.filter(i => i.data === dt).length;
       tabsHtml += `<div class="date-tab ${activeDateTab === dt ? 'active' : ''}" onclick="setDateTab('${dt}')">${dt === dataHoje ? 'Hoje' : dt} (${c})</div>`;
     });
     tabsContainer.innerHTML = tabsHtml;
 
-    const filtrados = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
-    listContainer.innerHTML = filtrados.map(item => `
+    const filtradosPorData = activeDateTab === 'TODAS' ? listaParaExibir : listaParaExibir.filter(i => i.data === activeDateTab);
+    listContainer.innerHTML = filtradosPorData.map(item => `
       <div class="history-item">
         <div><strong>${escapeHtml(item.operador)}</strong> <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span></div>
         <div style="display: flex; gap: 5px;">
@@ -808,7 +917,7 @@
       switchSection('monitoria');
       if (item.tipo) setModo(item.tipo); 
       processarEAutoSalvar(); 
-      showToast('Modo de Edição: Registro reaberto para ajustes.');
+      showToast('Modo de Edição: Registro reaberto.');
     }
   }
 
@@ -862,21 +971,56 @@
     }); return f;
   }
 
+  function obterListaFiltradaParaExportacao() {
+    const user = auth.currentUser;
+    const isGestor = user && user.email.toLowerCase() === emailGestor;
+
+    let lista = registrosNuvem;
+    if (isGestor) {
+      const mesFiltro = document.getElementById('filtroMesGestor').value;
+      const cicloFiltro = document.getElementById('filtroCicloGestor').value;
+      const opFiltro = document.getElementById('filtroOperadorGestor').value;
+
+      if (opFiltro !== 'TODAS') lista = lista.filter(i => i.operador === opFiltro);
+      if (mesFiltro !== 'TODAS') {
+        lista = lista.filter(i => {
+          if (!i.data) return false;
+          const p = i.data.split('/');
+          return `${p[1]}/${p[2]}` === mesFiltro;
+        });
+      }
+      if (cicloFiltro !== 'TODAS') {
+        lista = lista.filter(i => {
+          if (!i.data) return false;
+          const dia = parseInt(i.data.split('/')[0], 10);
+          if (cicloFiltro === 'CICLO_1') return dia >= 1 && dia <= 3;
+          if (cicloFiltro === 'CICLO_2') return dia >= 5 && dia <= 10;
+          if (cicloFiltro === 'CICLO_3') return dia >= 12 && dia <= 17;
+          if (cicloFiltro === 'CICLO_4') return dia >= 19 && dia <= 24;
+          if (cicloFiltro === 'CICLO_5') return dia >= 26 && dia <= 31;
+          return true;
+        });
+      }
+    }
+    return activeDateTab === 'TODAS' ? lista : lista.filter(i => i.data === activeDateTab);
+  }
+
   function exportarExcel() {
-    if (registrosNuvem.length === 0) { showToast('Sem dados para exportar.'); return; }
-    const f = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
+    const f = obterListaFiltradaParaExportacao();
+    if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
+
     const dataRows = f.map(h => ({ "Protocolo": h.protocolo, "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Texto": h.text }));
     const ws = XLSX.utils.json_to_sheet(dataRows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Nuvem");
-    XLSX.writeFile(wb, `Monitorias_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
+    XLSX.writeFile(wb, `Monitorias_Gestao_${new Date().toISOString().slice(0,10)}.xlsx`);
   }
 
   function exportarTxt() {
-    if (registrosNuvem.length === 0) { showToast('Sem dados para exportar.'); return; }
-    const f = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
+    const f = obterListaFiltradaParaExportacao();
+    if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
     
-    let content = "=== HISTÓRICO DE MONITORIAS E REORIENTAÇÕES ===\n\n";
+    let content = "=== RELATÓRIO CONSOLIDADO DE MONITORIAS ===\n\n";
     f.forEach((h, index) => {
       content += `--- REGISTRO #${index + 1} (Prot: ${h.protocolo} | ${h.operador} - ${h.data}) ---\n`;
       content += h.text + "\n\n";
@@ -885,7 +1029,7 @@
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `historico_registros_${new Date().toISOString().slice(0,10)}.txt`;
+    a.download = `relatorio_gestao_${new Date().toISOString().slice(0,10)}.txt`;
     a.click();
   }
 
