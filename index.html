@@ -130,7 +130,7 @@
     .btn-sidebar { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.4); }
     .btn-sidebar:hover { background: rgba(255,255,255,0.1); }
     .btn-danger { background: #c62828; color: #fff; }
-    .btn-save { background: #2e7d32; color: white; padding: 12px; font-size: 15px; margin-top: 15px; } /* Novo botão Salvar */
+    .btn-save { background: #2e7d32; color: white; padding: 12px; font-size: 15px; margin-top: 15px; }
     .btn-save:hover { background: #1b5e20; }
     .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
     .btn-block { width: 100%; }
@@ -289,7 +289,6 @@
             <div class="form-group"><label>Observação(ões)</label><textarea id="fieldObservacao" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
             <div class="form-group"><label>Ocorrência(s)</label><textarea id="fieldOcorrencia" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
             
-            <!-- NOVO BOTÃO DE SALVAR EXPLÍCITO -->
             <button class="btn btn-save btn-block" onclick="salvarRegistroManualmente()">💾 Salvar Registro na Nuvem</button>
           </div>
         </div>
@@ -358,7 +357,6 @@
         <div class="card-title">
           <span>📜 Registros Salvos no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
-            <!-- BOTÕES DE EXPORTAÇÃO RESTAURADOS -->
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel (.xlsx)</button>
             <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar (.txt)</button>
           </div>
@@ -667,14 +665,12 @@
     document.getElementById('reorientRender').innerText = `${document.getElementById('fieldSaudacao').value}, ${document.getElementById('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${document.getElementById('fieldOperador').value || '---'}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${document.getElementById('fieldProtocolo').value || '---'}\nOperador(a): ${document.getElementById('fieldOperador').value || '---'}\n\nSOLICITAÇÃO:\n${document.getElementById('fieldAtendimento').value || '---'}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
   }
 
-  // NOVO BOTÃO DE SALVAR MANUALMENTE
   function salvarRegistroManualmente() {
     if (verificarCamposFaltantes().length > 0) { 
       showToast('⚠️ Preencha todos os campos obrigatórios (marcados com *) antes de salvar.'); 
       return; 
     }
     
-    // Constrói o texto bruto atualizado baseado nos campos editados para salvar no histórico
     const op = document.getElementById('fieldOperador').value;
     const dtHora = document.getElementById('fieldDataHora').value;
     const prot = document.getElementById('fieldProtocolo').value;
@@ -690,7 +686,6 @@
     salvarNoHistoricoFirebase(textoParaSalvar, prot);
   }
 
-  // INTEGRAÇÃO FIRESTORE COM TRATAMENTO DE ERRO APRIMORADO
   async function salvarNoHistoricoFirebase(rawText, protocoloVal) {
     if (!auth.currentUser) {
       alert("Erro: Você não está logado no sistema.");
@@ -719,7 +714,6 @@
       carregarHistoricoDaNuvem(); 
       showToast("✅ Registro salvo com sucesso na nuvem!");
       
-      // Limpa os campos após salvar para preparar para o próximo
       setTimeout(() => { limparRelatorioBruto(); }, 1000);
       
     } catch (error) { 
@@ -738,7 +732,6 @@
       renderizarAbasELista();
     } catch(error) { 
       console.error("Erro ao carregar histórico:", error);
-      // alert("Aviso: Não foi possível carregar o histórico. " + error.message);
     }
   }
 
@@ -801,7 +794,6 @@
     }
   }
 
-  // EXPORTAÇÕES E VISUAIS
   async function copiarFichaFormatada() {
     try {
       const el = document.getElementById('fichaRender');
@@ -848,7 +840,6 @@
     XLSX.writeFile(wb, `Monitorias_${new Date().toISOString().slice(0,10)}.xlsx`);
   }
 
-  // FUNÇÃO EXPORTAR TXT RESTAURADA
   function exportarTxt() {
     if (registrosNuvem.length === 0) { showToast('Sem dados para exportar.'); return; }
     const f = activeDateTab === 'TODAS' ? registrosNuvem : registrosNuvem.filter(i => i.data === activeDateTab);
