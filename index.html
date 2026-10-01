@@ -156,8 +156,12 @@
     .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
 
     .history-list { max-height: calc(100vh - 420px); overflow-y: auto; margin-top: 5px; }
-    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
-    .history-item:hover { background-color: var(--history-hover); }
+    
+    /* NOVOS ESTILOS PARA O CARD EXPANSÍVEL (MINIMIZAR/CONSULTAR) */
+    .history-card-item { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+    .history-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; user-select: none; }
+    .history-card-header:hover { background-color: var(--history-hover); }
+    .history-card-body { padding: 15px; border-top: 1px solid var(--border-color); background: var(--card-bg); display: none; font-size: 13px; white-space: pre-wrap; font-family: monospace; }
     
     .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
     .checklist-container { background: var(--card-bg); padding: 12px; border-radius: 8px; }
@@ -194,7 +198,6 @@
         <span class="sidebar-icon">📝</span>
         <span class="sidebar-text">Realizar Monitoria</span>
       </li>
-      <!-- TEXTO ALTERADO DE "Histórico em Nuvem" PARA "Monitoria(s)" -->
       <li id="menuHistorico" onclick="switchSection('historico')" title="Monitoria(s)">
         <span class="sidebar-icon">📜</span>
         <span class="sidebar-text">Monitoria(s)</span>
@@ -354,14 +357,14 @@
     <section id="section-historico" class="content-section">
       <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
         <div class="card-title">
-          <span id="tituloSecaoMonitorias">📜 Monitoria(s) Salvas no Banco de Dados</span>
+          <span>📜 Monitoria(s) Salvas no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
             <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
           </div>
         </div>
 
-        <!-- PAINEL DE FILTROS DO GESTOR (RENOMEADO PARA "Operador(a)") -->
+        <!-- PAINEL DE FILTROS DO GESTOR -->
         <div id="gestorFilterContainer" class="gestor-filters-bar" style="display: none;">
           <div class="form-group" style="margin:0;">
             <label>Filtrar por Mês</label>
@@ -783,7 +786,6 @@
       const isGestor = user.email.toLowerCase() === emailGestor;
       
       let snapshot;
-      // O Gestor baixa todos os registros de qualquer usuário no Firestore
       if (isGestor) {
         snapshot = await db.collection("monitorias").get();
       } else {
@@ -893,15 +895,37 @@
     tabsContainer.innerHTML = tabsHtml;
 
     const filtradosPorData = activeDateTab === 'TODAS' ? listaParaExibir : listaParaExibir.filter(i => i.data === activeDateTab);
+    
+    // RENDERIZAÇÃO DOS CARDS COM FUNÇÃO DE MINIMIZAR / EXPANDIR
     listContainer.innerHTML = filtradosPorData.map(item => `
-      <div class="history-item">
-        <div><strong>${escapeHtml(item.operador)}</strong> <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span></div>
-        <div style="display: flex; gap: 5px;">
-          <button class="btn btn-outline" style="padding:3px 6px; font-size:11px;" onclick="recarregarHistorico('${item.id}')">Reabrir</button>
-          <button class="btn-remove-item" onclick="excluirItemHistorico('${item.id}')" title="Excluir da Nuvem">❌</button>
+      <div class="history-card-item">
+        <div class="history-card-header" onclick="toggleCardBody('${item.id}')">
+          <div>
+            <strong>${escapeHtml(item.operador)}</strong> 
+            <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span id="icon-${item.id}" style="font-weight:bold; font-size:12px;">🔽 Ver Detalhes</span>
+            <button class="btn btn-outline" style="padding:2px 6px; font-size:11px;" onclick="event.stopPropagation(); recarregarHistorico('${item.id}')" title="Carregar para editar">Reabrir</button>
+            <button class="btn-remove-item" onclick="event.stopPropagation(); excluirItemHistorico('${item.id}')" title="Excluir da Nuvem">❌</button>
+          </div>
         </div>
+        <div id="body-${item.id}" class="history-card-body">${escapeHtml(item.text)}</div>
       </div>
     `).join('');
+  }
+
+  // FUNÇÃO PARA EXPANDIR OU RECOLHER O CARD
+  function toggleCardBody(id) {
+    const bodyEl = document.getElementById(`body-${id}`);
+    const iconEl = document.getElementById(`icon-${id}`);
+    if (bodyEl.style.display === 'block') {
+      bodyEl.style.display = 'none';
+      iconEl.innerText = '🔽 Ver Detalhes';
+    } else {
+      bodyEl.style.display = 'block';
+      iconEl.innerText = '🔼 Recolher';
+    }
   }
 
   function setDateTab(dt) { activeDateTab = dt; renderizarAbasELista(); }
@@ -924,7 +948,7 @@
         await db.collection("monitorias").doc(id).delete();
         if (currentEditingId === id) currentEditingId = null;
         carregarHistoricoDaNuvem(); 
-        showToast('🗑️ Removido com sucesso.');
+        showToast('🗑️️ Removido com sucesso.');
       } catch(error) {
         alert("Erro ao excluir: " + error.message);
       }
