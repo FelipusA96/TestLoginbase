@@ -134,8 +134,8 @@
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
     .mode-btn.active { background: #1a237e; color: #ffffff; }
 
-    .gestor-filters-bar { background: var(--input-readonly-bg); padding: 12px; border-radius: 6px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: flex-end; }
-    @media (max-width: 800px) { .gestor-filters-bar { grid-template-columns: 1fr; } }
+    .filters-bar { background: var(--input-readonly-bg); padding: 12px; border-radius: 6px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: flex-end; }
+    @media (max-width: 900px) { .filters-bar { grid-template-columns: 1fr; } }
 
     .date-tabs-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); }
     .date-tab { padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 15px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; white-space: nowrap; }
@@ -358,37 +358,29 @@
         <div class="card-title">
           <span>📜 Monitoria(s) Salvas no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
-            <input type="file" id="fileInputImport" style="display: none;" accept=".xlsx, .xls, .txt" onchange="importarArquivoParaNuvem(event)">
-            <button class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;" onclick="document.getElementById('fileInputImport').click()">📤 Importar (TXT/Excel)</button>
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
             <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
           </div>
         </div>
 
-        <!-- PAINEL DE FILTROS DO GESTOR -->
-        <div id="gestorFilterContainer" class="gestor-filters-bar" style="display: none;">
+        <!-- PAINEL DE FILTROS (DATA INÍCIO, DATA FIM E OPERADOR SE GESTOR) -->
+        <div class="filters-bar">
           <div class="form-group" style="margin:0;">
-            <label>Filtrar por Mês</label>
-            <select id="filtroMesGestor" onchange="aplicarFiltrosGestor()">
-              <option value="TODOS">📅 Todos os Meses</option>
-            </select>
+            <label>Data Início</label>
+            <input type="date" id="filtroDataInicio" onchange="aplicarFiltrosPeriodo()">
           </div>
           <div class="form-group" style="margin:0;">
-            <label>Ciclo / Período Semanal</label>
-            <select id="filtroCicloGestor" onchange="aplicarFiltrosGestor()">
-              <option value="TODOS">🔄 Ciclo Completo / Mês Inteiro</option>
-              <option value="CICLO_1">1º Ciclo (Dias 01 a 03)</option>
-              <option value="CICLO_2">2º Ciclo (Dias 05 a 10)</option>
-              <option value="CICLO_3">3º Ciclo (Dias 12 a 17)</option>
-              <option value="CICLO_4">4º Ciclo (Dias 19 a 24)</option>
-              <option value="CICLO_5">5º Ciclo (Dias 26 a 31)</option>
-            </select>
+            <label>Data Fim</label>
+            <input type="date" id="filtroDataFim" onchange="aplicarFiltrosPeriodo()">
           </div>
-          <div class="form-group" style="margin:0;">
+          <div class="form-group" id="groupFiltroOperador" style="margin:0; display: none;">
             <label>Operador(a)</label>
-            <select id="filtroOperadorGestor" onchange="aplicarFiltrosGestor()">
+            <select id="filtroOperadorGestor" onchange="aplicarFiltrosPeriodo()">
               <option value="TODOS">👥 Todos da Equipe</option>
             </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <button class="btn btn-outline btn-block" style="padding: 10px;" onclick="limparFiltrosPeriodo()">Limpar Filtros</button>
           </div>
         </div>
 
@@ -491,7 +483,7 @@
       document.getElementById('appContainer').style.display = 'flex'; 
 
       const isGestor = user.email.toLowerCase() === emailGestor;
-      document.getElementById('gestorFilterContainer').style.display = isGestor ? 'grid' : 'none';
+      document.getElementById('groupFiltroOperador').style.display = isGestor ? 'block' : 'none';
 
       carregarHistoricoDaNuvem(); 
     } else {
@@ -830,7 +822,7 @@
       registrosNuvem.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       
       if (isGestor) {
-        popularFiltrosGestor();
+        popularFiltroOperadorGestor();
       }
 
       renderizarAbasELista();
@@ -839,23 +831,7 @@
     }
   }
 
-  function popularFiltrosGestor() {
-    const selectMes = document.getElementById('filtroMesGestor');
-    const mesesSet = new Set();
-    registrosNuvem.forEach(i => {
-      if (i.data) {
-        const partes = i.data.split('/');
-        if (partes.length === 3) mesesSet.add(`${partes[1]}/${partes[2]}`);
-      }
-    });
-    const mesesUnicos = [...mesesSet].sort();
-    
-    let htmlMes = `<option value="TODOS" selected>📅 Todos os Meses (${registrosNuvem.length})</option>`;
-    mesesUnicos.forEach(m => {
-      htmlMes += `<option value="${m}">Mês: ${m}</option>`;
-    });
-    selectMes.innerHTML = htmlMes;
-
+  function popularFiltroOperadorGestor() {
     const selectOp = document.getElementById('filtroOperadorGestor');
     const opsSet = new Set(registrosNuvem.map(i => i.operador).filter(Boolean));
     const opsUnicos = [...opsSet].sort();
@@ -864,11 +840,18 @@
       htmlOp += `<option value="${op}">${op}</option>`;
     });
     selectOp.innerHTML = htmlOp;
-
-    document.getElementById('filtroCicloGestor').value = 'TODOS';
   }
 
-  function aplicarFiltrosGestor() {
+  function aplicarFiltrosPeriodo() {
+    activeDateTab = 'TODAS';
+    renderizarAbasELista();
+  }
+
+  function limparFiltrosPeriodo() {
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    const opFiltro = document.getElementById('filtroOperadorGestor');
+    if (opFiltro) opFiltro.value = 'TODOS';
     activeDateTab = 'TODAS';
     renderizarAbasELista();
   }
@@ -879,31 +862,32 @@
     let lista = registrosNuvem;
 
     if (isGestor) {
-      const mesFiltro = document.getElementById('filtroMesGestor').value;
-      const cicloFiltro = document.getElementById('filtroCicloGestor').value;
       const opFiltro = document.getElementById('filtroOperadorGestor').value;
-
-      if (opFiltro && opFiltro !== 'TODAS') lista = lista.filter(i => i.operador === opFiltro);
-      if (mesFiltro && mesFiltro !== 'TODAS') {
-        lista = lista.filter(i => {
-          if (!i.data) return false;
-          const p = i.data.split('/');
-          return `${p[1]}/${p[2]}` === mesFiltro;
-        });
-      }
-      if (cicloFiltro && cicloFiltro !== 'TODAS') {
-        lista = lista.filter(i => {
-          if (!i.data) return false;
-          const dia = parseInt(i.data.split('/')[0], 10);
-          if (cicloFiltro === 'CICLO_1') return dia >= 1 && dia <= 3;
-          if (cicloFiltro === 'CICLO_2') return dia >= 5 && dia <= 10;
-          if (cicloFiltro === 'CICLO_3') return dia >= 12 && dia <= 17;
-          if (cicloFiltro === 'CICLO_4') return dia >= 19 && dia <= 24;
-          if (cicloFiltro === 'CICLO_5') return dia >= 26 && dia <= 31;
-          return true;
-        });
+      if (opFiltro && opFiltro !== 'TODAS') {
+        lista = lista.filter(i => i.operador === opFiltro);
       }
     }
+
+    const dataInicioStr = document.getElementById('filtroDataInicio').value; // AAAA-MM-DD
+    const dataFimStr = document.getElementById('filtroDataFim').value;       // AAAA-MM-DD
+
+    if (dataInicioStr || dataFimStr) {
+      const dInicio = dataInicioStr ? new Date(dataInicioStr + 'T00:00:00') : null;
+      const dFim = dataFimStr ? new Date(dataFimStr + 'T23:59:59') : null;
+
+      lista = lista.filter(i => {
+        if (!i.data) return false;
+        // i.data está no formato DD/MM/AAAA
+        const partes = i.data.split('/');
+        if (partes.length !== 3) return false;
+        const itemDate = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
+
+        if (dInicio && itemDate < dInicio) return false;
+        if (dFim && itemDate > dFim) return false;
+        return true;
+      });
+    }
+
     return lista;
   }
 
@@ -916,104 +900,6 @@
     } catch (err) {
       console.error("Erro ao atualizar status:", err);
       showToast("❌ Erro ao salvar status do checkbox.");
-    }
-  }
-
-  async function importarArquivoParaNuvem(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const user = auth.currentUser;
-    if (!user) { alert("Você precisa estar logado."); return; }
-
-    showToast("📤 Processando e importando arquivo...");
-    const fileName = file.name.toLowerCase();
-
-    try {
-      if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(firstSheet);
-
-          let importadosCount = 0;
-          for (let row of rows) {
-            const protocolo = String(row.Protocolo || row.protocolo || row.PROTOCOLO || Date.now() + Math.random());
-            const operador = row.Operador || row.operador || row.OPERADOR || 'Não identificado';
-            const dataReg = row.Data || row.data || row.DATA || getHojeDataFormatada();
-            const tipo = row.Tipo || row.tipo || row.TIPO || 'MONITORIA';
-            const texto = row.Texto || row.texto || row.TEXTO || `Protocolo: ${protocolo}\nOperador(a): ${operador}`;
-
-            const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
-            if (q.empty) {
-              await db.collection("monitorias").add({
-                protocolo: protocolo,
-                operador: operador,
-                data: dataReg,
-                text: texto,
-                tipo: tipo,
-                userId: user.uid,
-                autorEmail: user.email,
-                registradoSistema: false,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              importadosCount++;
-            }
-          }
-          showToast(`✅ ${importadosCount} registros do Excel importados com sucesso!`);
-          carregarHistoricoDaNuvem();
-        };
-        reader.readAsArrayBuffer(file);
-      } else if (fileName.endsWith('.txt')) {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-          const content = e.target.result;
-          const blocos = content.split(/--- REGISTRO\s*#\d+\s*/);
-          let importadosCount = 0;
-
-          for (let bloco of blocos) {
-            const textoLido = bloco.trim();
-            if (!textoLido || textoLido.startsWith("=== HISTÓRICO")) continue;
-
-            const realizadaMatch = textoLido.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
-            const dataReg = realizadaMatch ? realizadaMatch[1].trim() : getHojeDataFormatada();
-
-            const protMatch = textoLido.match(/Protocolo:\s*([^\r\n]+)/i);
-            const protocolo = protMatch ? protMatch[1].trim() : String(Date.now() + Math.random());
-
-            const opMatch = textoLido.match(/Operador\(a\):\s*([^\r\n]+)/i);
-            const operador = opMatch ? opMatch[1].trim() : 'Não identificado';
-
-            const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
-            if (q.empty) {
-              await db.collection("monitorias").add({
-                protocolo: protocolo,
-                operador: operador,
-                data: dataReg,
-                text: textoLido,
-                tipo: 'MONITORIA',
-                userId: user.uid,
-                autorEmail: user.email,
-                registradoSistema: false,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              importadosCount++;
-            }
-          }
-          showToast(`✅ ${importadosCount} registros do TXT importados!`);
-          carregarHistoricoDaNuvem();
-        };
-        reader.readAsText(file);
-      } else {
-        alert("Formato não suportado. Por favor, envie um arquivo .xlsx ou .txt.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao importar arquivo: " + err.message);
-    } finally {
-      event.target.value = '';
     }
   }
 
@@ -1084,7 +970,7 @@
     const listContainer = document.getElementById('historyContainer');
     if (listaParaExibir.length === 0) {
       tabsContainer.innerHTML = ''; 
-      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este filtro.<br><small>Tente alterar o Mês, Ciclo ou Operador(a) ou importar seus arquivos antigos.</small></div>'; 
+      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este período.<br><small>Tente ajustar as datas de início e fim acima.</small></div>'; 
       return;
     }
 
@@ -1203,7 +1089,7 @@
     const ws = XLSX.utils.json_to_sheet(dataRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
-    XLSX.writeFile(wb, `Monitorias_Gestao_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, `Monitorias_Relatorio_${new Date().toISOString().slice(0,10)}.xlsx`);
   }
 
   function exportarTxt() {
@@ -1219,7 +1105,7 @@
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `relatorio_gestao_${new Date().toISOString().slice(0,10)}.txt`;
+    a.download = `relatorio_${new Date().toISOString().slice(0,10)}.txt`;
     a.click();
   }
 
