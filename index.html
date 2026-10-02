@@ -108,7 +108,6 @@
     
     textarea, input, select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--text-color); }
     textarea:focus, input:focus, select:focus { border-color: var(--title-color); outline: none; }
-    input[readonly] { background-color: var(--input-readonly-bg) !important; cursor: not-allowed; opacity: 0.85; font-weight: bold; }
     .field-error { border-color: var(--error-border) !important; background-color: var(--error-bg) !important; }
 
     .form-group { margin-bottom: 12px; }
@@ -275,7 +274,7 @@
             </div>
 
             <div class="form-row">
-              <div class="form-group"><label>Data Realizada</label><input type="text" id="fieldDataRealizada" readonly tabindex="-1"></div>
+              <div class="form-group"><label>Data Realizada *</label><input type="text" id="fieldDataRealizada" oninput="validarECarregar()"></div>
               <div class="form-group"><label>Operador(a) *</label><input type="text" id="fieldOperador" oninput="validarECarregar()"></div>
             </div>
             <div class="form-row">
@@ -421,7 +420,7 @@
     </div>
     
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-      <div><label style="font-size:11px; font-weight:bold; display:block;">DATA REALIZADA</label><input type="text" id="popDataRealizada" readonly tabindex="-1" style="width:100%; padding:6px; font-size:12px;"></div>
+      <div><label style="font-size:11px; font-weight:bold; display:block;">DATA REALIZADA</label><input type="text" id="popDataRealizada" style="width:100%; padding:6px; font-size:12px;"></div>
       <div><label style="font-size:11px; font-weight:bold; display:block;">OPERADOR(A)</label><input type="text" id="popOperador" placeholder="Nome" style="width:100%; padding:6px; font-size:12px;"></div>
     </div>
 
@@ -546,7 +545,7 @@
 
   function abrirPopOutWindow() {
     const popWin = window.open("", "ChecklistPopout", "width=450,height=650,resizable=yes,scrollbars=yes");
-    if (!popWin) { showToast("⚠️️ Permita pop-ups no seu navegador."); return; }
+    if (!popWin) { showToast("⚠️ Permita pop-ups no seu navegador."); return; }
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     popWin.document.write(`
@@ -558,7 +557,6 @@
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; background: ${isDark ? '#1e1e1e' : '#f0f2f5'}; color: ${isDark ? '#e0e0e0' : '#333'}; margin: 0; }
           input, textarea { width: 100%; padding: 8px; font-size: 13px; margin-top: 2px; box-sizing: border-box; background: ${isDark ? '#2d2d2d' : '#fff'}; color: ${isDark ? '#e0e0e0' : '#333'}; border: 1px solid ${isDark ? '#444' : '#ccc'}; border-radius: 4px; }
-          input[readonly] { background-color: ${isDark ? '#383838' : '#e9ecef'} !important; cursor: not-allowed; opacity: 0.85; font-weight: bold; }
           label { font-size: 11px; font-weight: bold; margin-top: 6px; display: block; color: ${isDark ? '#aaa' : '#555'}; }
           button { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; font-size: 14px; }
           button:hover { background: #1b5e20; }
@@ -572,7 +570,7 @@
     popWin.document.close();
 
     setTimeout(() => {
-      popWin.document.getElementById('popDataRealizada').value = getHojeDataFormatada();
+      popWin.document.getElementById('popDataRealizada').value = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
       popWin.document.getElementById('popOperador').value = document.getElementById('fieldOperador').value;
       popWin.document.getElementById('popDataHora').value = document.getElementById('fieldDataHora').value;
       popWin.document.getElementById('popProtocolo').value = document.getElementById('fieldProtocolo').value;
@@ -594,7 +592,7 @@
   }
 
   function enviarDadosDoPopout(docContext) {
-    const dtRealizada = getHojeDataFormatada();
+    const dtRealizada = docContext.getElementById('popDataRealizada').value.trim() || getHojeDataFormatada();
     const op = docContext.getElementById('popOperador').value.trim();
     const dtHora = docContext.getElementById('popDataHora').value.trim();
     const prot = docContext.getElementById('popProtocolo').value.trim();
@@ -666,7 +664,10 @@
     if (!raw.trim()) { showToast('Cole algum texto primeiro.'); return; }
     limparErrosVisuais();
 
-    const dataHoje = getHojeDataFormatada();
+    // CAPTURA A DATA "REALIZADA" DO TEXTO BRUTO (SE HOUVER) OU USA HOJE
+    const realizadaMatch = raw.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
+    const dataRealizada = realizadaMatch ? realizadaMatch[1].trim() : getHojeDataFormatada();
+
     const operadorMatch = raw.match(/Operador\(a\):\s*(.*)/i);
     const dataHoraMatch = raw.match(/Data\/Hora:\s*(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}:\d{2})?)/i) || raw.match(/Data\/Hora:\s*([^\n\r]+)/i);
     const protocoloMatch = raw.match(/Protocolo:\s*(\d+)/i) || raw.match(/Protocolo:\s*(.*)/i);
@@ -679,7 +680,7 @@
     const obsMatch = raw.match(/Observação\(ões\):\s*([\s\S]*?)(?=(?:Ocorrência\(s\)|Ocorrências|DESVIO):|$)/i) || raw.match(/Observação:\s*([\s\S]*?)(?=(?:Ocorrência\(s\)|Ocorrências|DESVIO):|$)/i);
     const ocorrenciaMatch = raw.match(/Ocorrência\(s\):\s*([\s\S]*)/i) || raw.match(/Ocorrências:\s*([\s\S]*)/i) || raw.match(/DESVIO:\s*([\s\S]*)/i);
 
-    document.getElementById('fieldDataRealizada').value = dataHoje;
+    document.getElementById('fieldDataRealizada').value = dataRealizada;
     document.getElementById('fieldOperador').value = operadorMatch ? operadorMatch[1].trim() : '';
     document.getElementById('fieldDataHora').value = (dataHoraMatch && !dataHoraMatch[1].toLowerCase().includes('protocolo')) ? dataHoraMatch[1].trim() : '';
     document.getElementById('fieldProtocolo').value = protNum;
@@ -714,11 +715,12 @@
   }
 
   function atualizarInterface() {
+    const dataRealizada = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
     const dataHora = document.getElementById('fieldDataHora').value || '---';
     const observacao = document.getElementById('fieldObservacao').value.trim() !== '' ? document.getElementById('fieldObservacao').value.trim() : '-Não se aplica.';
     const ocorrencia = document.getElementById('fieldOcorrencia').value.trim() !== '' ? document.getElementById('fieldOcorrencia').value.trim() : '-Não se aplica.';
     
-    document.getElementById('outDataRealizada').innerText = getHojeDataFormatada();
+    document.getElementById('outDataRealizada').innerText = dataRealizada;
     document.getElementById('outOperador').innerText = document.getElementById('fieldOperador').value || '---';
     document.getElementById('outDataHora').innerText = dataHora;
     document.getElementById('outProtocolo').innerText = document.getElementById('fieldProtocolo').value || '---';
@@ -741,6 +743,7 @@
       return; 
     }
     
+    const dtRealizada = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
     const op = document.getElementById('fieldOperador').value;
     const dtHora = document.getElementById('fieldDataHora').value;
     const prot = document.getElementById('fieldProtocolo').value;
@@ -751,7 +754,7 @@
     const obs = document.getElementById('fieldObservacao').value;
     const ocor = document.getElementById('fieldOcorrencia').value;
     
-    const textoParaSalvar = `Realizada: ${getHojeDataFormatada()}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${aqm}\nMonitoria: ${mon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
+    const textoParaSalvar = `Realizada: ${dtRealizada}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${aqm}\nMonitoria: ${mon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
     
     if (prot) {
       const existente = registrosNuvem.find(i => i.protocolo === prot);
@@ -768,10 +771,12 @@
     }
     
     const user = auth.currentUser;
+    const dtRealizadaField = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
+
     const docData = {
       protocolo: protocoloVal || Date.now().toString(),
       operador: document.getElementById('fieldOperador').value || 'Não identificado',
-      data: getHojeDataFormatada(),
+      data: dtRealizadaField,
       text: rawText,
       tipo: modoAtual,
       userId: user.uid,
@@ -903,7 +908,6 @@
     return lista;
   }
 
-  // IMPORTAÇÃO ROBUSTA PARA SUPORTAR EXCEL (E XLSX) E TXT
   async function importarArquivoParaNuvem(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -925,7 +929,6 @@
 
           let importadosCount = 0;
           for (let row of rows) {
-            // Tenta pegar as colunas independentemente de maiúsculas/minúsculas ou variações
             const protocolo = String(row.Protocolo || row.protocolo || row.PROTOCOLO || Date.now() + Math.random());
             const operador = row.Operador || row.operador || row.OPERADOR || 'Não identificado';
             const dataReg = row.Data || row.data || row.DATA || getHojeDataFormatada();
@@ -962,18 +965,14 @@
             const textoLido = bloco.trim();
             if (!textoLido || textoLido.startsWith("=== HISTÓRICO")) continue;
 
-            const cabecalhoMatch = textoLido.match(/\(([^)]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})\)/);
-            const operadorCabecalho = cabecalhoMatch ? cabecalhoMatch[1].trim() : '';
-            const dataCabecalho = cabecalhoMatch ? cabecalhoMatch[2].trim() : '';
+            const realizadaMatch = textoLido.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
+            const dataReg = realizadaMatch ? realizadaMatch[1].trim() : getHojeDataFormatada();
 
             const protMatch = textoLido.match(/Protocolo:\s*([^\r\n]+)/i);
             const protocolo = protMatch ? protMatch[1].trim() : String(Date.now() + Math.random());
 
             const opMatch = textoLido.match(/Operador\(a\):\s*([^\r\n]+)/i);
-            const operador = opMatch ? opMatch[1].trim() : (operadorCabecalho || 'Não identificado');
-
-            const realizadaMatch = textoLido.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
-            const dataReg = realizadaMatch ? realizadaMatch[1].trim() : (dataCabecalho || getHojeDataFormatada());
+            const operador = opMatch ? opMatch[1].trim() : 'Não identificado';
 
             const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
             if (q.empty) {
@@ -1176,7 +1175,7 @@
   function validarECarregar() { limparErrosVisuais(); atualizarInterface(); }
   function verificarCamposFaltantes() {
     let f = []; camposObrigatorios.forEach(id => {
-      const el = document.getElementById(id); if (!el || !el.value.trim()) { el.classList.add('field-error'); f.push(id); } else { el.classList.remove('key'); }
+      const el = document.getElementById(id); if (!el || !el.value.trim()) { el.classList.add('field-error'); f.push(id); } else { el.classList.remove('field-error'); }
     }); return f;
   }
 
@@ -1204,6 +1203,7 @@
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
+    a.download = `relatorio_gestao_${new Date().toISOString().slice(0,10)}.toISOString().slice(0,10)}.txt`;
     a.download = `relatorio_gestao_${new Date().toISOString().slice(0,10)}.txt`;
     a.click();
   }
