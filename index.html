@@ -129,7 +129,7 @@
     .btn-save { background: #2e7d32; color: white; padding: 12px; font-size: 15px; margin-top: 15px; }
     .btn-save:hover { background: #1b5e20; }
     .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
-    .btn-block { width: 100% };
+    .btn-block { width: 100%; }
 
     .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
@@ -327,7 +327,7 @@
                 <tr><th>OBSERVAÇÕES / PONTOS DE ATENÇÃO</th></tr>
                 <tr>
                   <td>
-                    <p style="margin: 0 0 8px 0;"><strong>✨ Ponto Forte:</strong><br>Seu empenho reforça seu potencial. Com constância e foco, seus resultados serão cada vez maiores.</p>
+                    <p style="margin: 0 0 8px 0;"><strong>✨ Ponto Forte:</strong><br>Seu empenho reforça seu potencial. Constância e foco trarão resultados ainda maiores.</p>
                     <p style="margin: 0 0 8px 0;"><strong>💡 Observação(ões):</strong><br><span id="outObservacao">-Não se aplica.</span></p>
                     <p style="margin: 0;"><strong>🔍 Ocorrência(s):</strong><br><span id="outOcorrencia">-Não se aplica.</span></p>
                   </td>
@@ -359,6 +359,8 @@
         <div class="card-title">
           <span>📜 Monitoria(s) Salvas no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
+            <input type="file" id="fileInputImport" style="display: none;" accept=".xlsx, .xls, .txt" onchange="importarArquivoParaNuvem(event)">
+            <button class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;" onclick="document.getElementById('fileInputImport').click()">📤 Importar (TXT/Excel)</button>
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
             <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
           </div>
@@ -885,6 +887,100 @@
     return lista;
   }
 
+  // FUNÇÃO DE IMPORTAÇÃO DE ARQUIVOS (TXT ou EXCEL) PARA A NUVEM
+  async function importarArquivoParaNuvem(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const user = auth.currentUser;
+    if (!user) { alert("Você precisa estar logado."); return; }
+
+    showToast("📤 Processando e importando arquivo...");
+    const fileName = file.name.toLowerCase();
+
+    try {
+      if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+          let importadosCount = 0;
+          for (let row of rows) {
+            const protocolo = String(row.Protocolo || row.protocolo || Date.now() + Math.random());
+            const operador = row.Operador || row.operador || 'Não identificado';
+            const dataReg = row.Data || row.data || getHojeDataFormatada();
+            const tipo = row.Tipo || row.tipo || 'MONITORIA';
+            const texto = row.Texto || row.texto || `Protocolo: ${protocolo}\nOperador(a): ${operador}`;
+
+            const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
+            if (q.empty) {
+              await db.collection("monitorias").add({
+                protocolo: protocolo,
+                operador: operador,
+                data: dataReg,
+                text: texto,
+                tipo: tipo,
+                userId: user.uid,
+                autorEmail: user.email,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              importadosCount++;
+            }
+          }
+          showToast(`✅ ${importadosCount} registros importados com sucesso!`);
+          carregarHistoricoDaNuvem();
+        };
+        reader.readAsArrayBuffer(file);
+      } else if (fileName.endsWith('.txt')) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const content = e.target.result;
+          const blocos = content.split(/--- REGISTRO /);
+          let importadosCount = 0;
+
+          for (let bloco of blocos) {
+            if (!bloco.trim()) continue;
+            const protMatch = bloco.match(/Prot:\s*([^\s|]+)/);
+            const opMatch = bloco.match(/\|\s*([^-]+)\s*-/);
+            const dataMatch = bloco.match(/-\s*(\d{2}\/\d{2}\/\d{4})/);
+
+            const protocolo = protMatch ? protMatch[1] : String(Date.now() + Math.random());
+            const operador = opMatch ? opMatch[1].trim() : 'Não identificado';
+            const dataReg = dataMatch ? dataMatch[1] : getHojeDataFormatada();
+
+            const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
+            if (q.empty) {
+              await db.collection("monitorias").add({
+                protocolo: protocolo,
+                operador: operador,
+                data: dataReg,
+                text: bloco.trim(),
+                tipo: 'MONITORIA',
+                userId: user.uid,
+                autorEmail: user.email,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              importadosCount++;
+            }
+          }
+          showToast(`✅ ${importadosCount} registros do TXT importados!`);
+          carregarHistoricoDaNuvem();
+        };
+        reader.readAsText(file);
+      } else {
+        alert("Formato não suportado. Por favor, envie um arquivo .xlsx ou .txt.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao importar arquivo: " + err.message);
+    } finally {
+      event.target.value = ''; // Limpa o input
+    }
+  }
+
   function renderizarGraficoProdutividade(lista) {
     const contagemPorData = {};
     lista.forEach(item => {
@@ -952,7 +1048,7 @@
     const listContainer = document.getElementById('historyContainer');
     if (listaParaExibir.length === 0) {
       tabsContainer.innerHTML = ''; 
-      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este filtro.<br><small>Tente alterar o Mês, Ciclo ou Operador(a).</small></div>'; 
+      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este filtro.<br><small>Tente alterar o Mês, Ciclo ou Operador(a) ou importar seus arquivos antigos.</small></div>'; 
       return;
     }
 
