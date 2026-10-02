@@ -156,7 +156,7 @@
 
     .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
 
-    .history-list { max-height: calc(100vh - 580px); overflow-y: auto; margin-top: 5px; }
+    .history-list { max-height: calc(100vh - 430px); overflow-y: auto; margin-top: 5px; }
     
     .history-card-item { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
     .history-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; user-select: none; }
@@ -393,10 +393,13 @@
           </div>
         </div>
 
-        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE DIÁRIA -->
-        <div class="card" style="margin-bottom: 15px; padding: 12px 20px;">
-          <div style="font-size: 13px; font-weight: bold; color: var(--title-color); margin-bottom: 8px;">📈 Produtividade Diária (Monitorias Realizadas por Dia)</div>
-          <div style="height: 130px; position: relative;">
+        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE DIÁRIA (AGORA MINIMIZÁVEL) -->
+        <div class="card" style="margin-bottom: 12px; padding: 10px 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChartCard()">
+            <span style="font-size: 13px; font-weight: bold; color: var(--title-color);">📈 Produtividade Diária (Monitorias Realizadas por Dia)</span>
+            <span id="chartToggleIcon" style="font-size: 12px; font-weight: bold; color: var(--title-color);">[-] Minimizar Gráfico</span>
+          </div>
+          <div id="chartBodyContainer" style="height: 130px; position: relative; margin-top: 8px;">
             <canvas id="graficoProdutividade"></canvas>
           </div>
         </div>
@@ -515,6 +518,20 @@
   }
 
   function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+  // FUNÇÃO PARA MINIMIZAR / EXPANDIR O GRÁFICO
+  function toggleChartCard() {
+    const bodyEl = document.getElementById('chartBodyContainer');
+    const iconEl = document.getElementById('chartToggleIcon');
+    if (bodyEl.style.display === 'none') {
+      bodyEl.style.display = 'block';
+      iconEl.innerText = '[-] Minimizar Gráfico';
+      setTimeout(() => { if(chartInstance) chartInstance.resize(); }, 100);
+    } else {
+      bodyEl.style.display = 'none';
+      iconEl.innerText = '[+] Expandir Gráfico';
+    }
+  }
 
   function fazerLogin() {
     const user = document.getElementById('loginUser').value.trim();
@@ -887,7 +904,6 @@
     return lista;
   }
 
-  // FUNÇÃO DE IMPORTAÇÃO DE ARQUIVOS (TXT ou EXCEL) PARA A NUVEM
   async function importarArquivoParaNuvem(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -977,7 +993,7 @@
       console.error(err);
       alert("Erro ao importar arquivo: " + err.message);
     } finally {
-      event.target.value = ''; // Limpa o input
+      event.target.value = '';
     }
   }
 
