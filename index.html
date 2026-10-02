@@ -134,11 +134,11 @@
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
     .mode-btn.active { background: #1a237e; color: #ffffff; }
 
-    .filters-bar { background: var(--input-readonly-bg); padding: 12px; border-radius: 6px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: flex-end; }
+    .filters-bar { background: var(--input-readonly-bg); padding: 14px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end; }
     @media (max-width: 900px) { .filters-bar { grid-template-columns: 1fr; } }
 
-    .date-tabs-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); }
-    .date-tab { padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 15px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; white-space: nowrap; }
+    .date-tabs-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+    .date-tab { padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 20px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; white-space: nowrap; }
     .date-tab.active { background: var(--title-color); color: #ffffff; border-color: var(--title-color); }
 
     .preview-container { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -155,12 +155,14 @@
 
     .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
 
-    .history-list { max-height: calc(100vh - 430px); overflow-y: auto; margin-top: 5px; }
+    /* LAYOUT AMPLO E CONFORTÁVEL PARA A LISTA DE HISTÓRICO */
+    .history-container-box { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 30px; }
+    .history-list { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
     
-    .history-card-item { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
-    .history-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; user-select: none; }
+    .history-card-item { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+    .history-card-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; cursor: pointer; user-select: none; }
     .history-card-header:hover { background-color: var(--history-hover); }
-    .history-card-body { padding: 15px; border-top: 1px solid var(--border-color); background: var(--card-bg); display: none; font-size: 13px; white-space: pre-wrap; font-family: monospace; }
+    .history-card-body { padding: 20px; border-top: 1px solid var(--border-color); background: var(--card-bg); display: none; font-size: 13px; white-space: pre-wrap; font-family: monospace; line-height: 1.6; }
     
     .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
     .checklist-container { background: var(--card-bg); padding: 12px; border-radius: 8px; }
@@ -354,7 +356,7 @@
 
     <!-- SEÇÃO 2: MONITORIA(S) / GESTÃO -->
     <section id="section-historico" class="content-section">
-      <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
+      <div class="card">
         <div class="card-title">
           <span>📜 Monitoria(s) Salvas no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
@@ -363,7 +365,7 @@
           </div>
         </div>
 
-        <!-- PAINEL DE FILTROS (DATA INÍCIO, DATA FIM E OPERADOR SE GESTOR) -->
+        <!-- PAINEL DE FILTROS -->
         <div class="filters-bar">
           <div class="form-group" style="margin:0;">
             <label>Data Início</label>
@@ -384,19 +386,24 @@
           </div>
         </div>
 
-        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE DIÁRIA (MINIMIZÁVEL) -->
-        <div class="card" style="margin-bottom: 12px; padding: 10px 20px;">
+        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE -->
+        <div class="card" style="margin-bottom: 20px; padding: 15px 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChartCard()">
             <span style="font-size: 13px; font-weight: bold; color: var(--title-color);">📈 Produtividade Diária (Monitorias Realizadas por Dia)</span>
             <span id="chartToggleIcon" style="font-size: 12px; font-weight: bold; color: var(--title-color);">[-] Minimizar Gráfico</span>
           </div>
-          <div id="chartBodyContainer" style="height: 130px; position: relative; margin-top: 8px;">
+          <div id="chartBodyContainer" style="height: 140px; position: relative; margin-top: 10px;">
             <canvas id="graficoProdutividade"></canvas>
           </div>
         </div>
 
         <div id="dateTabsContainer" class="date-tabs-container"></div>
-        <div id="historyContainer" class="history-list" style="flex: 1;"></div>
+      </div>
+
+      <!-- ÁREA DE HISTÓRICO EXPANDIDA E SOLTA (SEM FICAR ESPREMIDA EM CAIXINHA PEQUENA) -->
+      <div class="history-container-box">
+        <div style="font-weight: bold; font-size: 15px; color: var(--title-color); margin-bottom: 15px;">📋 Lista de Registros Filtrados</div>
+        <div id="historyContainer" class="history-list"></div>
       </div>
     </section>
 
@@ -877,7 +884,6 @@
 
       lista = lista.filter(i => {
         if (!i.data) return false;
-        // i.data está no formato DD/MM/AAAA
         const partes = i.data.split('/');
         if (partes.length !== 3) return false;
         const itemDate = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
@@ -987,17 +993,17 @@
     listContainer.innerHTML = filtradosPorData.map(item => `
       <div class="history-card-item">
         <div class="history-card-header" onclick="toggleCardBody('${item.id}')">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <input type="checkbox" ${item.registradoSistema ? 'checked' : ''} onclick="event.stopPropagation(); atualizarStatusRegistrado('${item.id}', this.checked)" title="Registrado no sistema externo">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <input type="checkbox" style="width: 20px; height: 20px; cursor: pointer;" ${item.registradoSistema ? 'checked' : ''} onclick="event.stopPropagation(); atualizarStatusRegistrado('${item.id}', this.checked)" title="Registrado no sistema externo">
             <div>
-              <strong>${escapeHtml(item.operador)}</strong> 
-              <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
+              <strong style="font-size: 15px;">${escapeHtml(item.operador)}</strong> 
+              <span style="color:var(--text-muted); font-size:12px; margin-left: 8px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
             </div>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <span id="icon-${item.id}" style="font-weight:bold; font-size:12px;">🔽 Ver Detalhes</span>
-            <button class="btn btn-outline" style="padding:2px 6px; font-size:11px;" onclick="event.stopPropagation(); recarregarHistorico('${item.id}')" title="Carregar para editar">Reabrir</button>
-            <button class="btn-remove-item" onclick="event.stopPropagation(); excluirItemHistorico('${item.id}')" title="Excluir da Nuvem">❌</button>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span id="icon-${item.id}" style="font-weight:bold; font-size:12px; color: var(--title-color);">🔽 Ver Detalhes</span>
+            <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="event.stopPropagation(); recarregarHistorico('${item.id}')" title="Carregar para editar">Reabrir</button>
+            <button class="btn-remove-item" style="padding: 4px 8px;" onclick="event.stopPropagation(); excluirItemHistorico('${item.id}')" title="Excluir da Nuvem">❌</button>
           </div>
         </div>
         <div id="body-${item.id}" class="history-card-body">${escapeHtml(item.text)}</div>
