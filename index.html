@@ -10,9 +10,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
 
-  <!-- html2canvas e SheetJS -->
+  <!-- html2canvas, SheetJS e Chart.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root {
@@ -128,7 +129,7 @@
     .btn-save { background: #2e7d32; color: white; padding: 12px; font-size: 15px; margin-top: 15px; }
     .btn-save:hover { background: #1b5e20; }
     .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
-    .btn-block { width: 100%; }
+    .btn-block { width: 100% };
 
     .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
@@ -155,9 +156,8 @@
 
     .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
 
-    .history-list { max-height: calc(100vh - 420px); overflow-y: auto; margin-top: 5px; }
+    .history-list { max-height: calc(100vh - 580px); overflow-y: auto; margin-top: 5px; }
     
-    /* NOVOS ESTILOS PARA O CARD EXPANSÍVEL (MINIMIZAR/CONSULTAR) */
     .history-card-item { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
     .history-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; user-select: none; }
     .history-card-header:hover { background-color: var(--history-hover); }
@@ -391,6 +391,14 @@
           </div>
         </div>
 
+        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE DIÁRIA -->
+        <div class="card" style="margin-bottom: 15px; padding: 12px 20px;">
+          <div style="font-size: 13px; font-weight: bold; color: var(--title-color); margin-bottom: 8px;">📈 Produtividade Diária (Monitorias Realizadas por Dia)</div>
+          <div style="height: 130px; position: relative;">
+            <canvas id="graficoProdutividade"></canvas>
+          </div>
+        </div>
+
         <div id="dateTabsContainer" class="date-tabs-container"></div>
         <div id="historyContainer" class="history-list" style="flex: 1;"></div>
       </div>
@@ -468,6 +476,7 @@
   let currentEditingId = null;
   let activeDateTab = 'TODAS';
   let registrosNuvem = []; 
+  let chartInstance = null;
   const emailGestor = 'gestor.monit@painel.com';
   const camposObrigatorios = ['fieldDataRealizada','fieldOperador','fieldDataHora','fieldProtocolo','fieldNotaMonitoria','fieldMo','fieldAtendimento'];
 
@@ -499,6 +508,7 @@
       document.getElementById('section-historico').classList.add('active');
       document.getElementById('menuHistorico').classList.add('active');
       document.getElementById('sectionTitle').innerText = 'Monitoria(s)';
+      setTimeout(() => { if(chartInstance) chartInstance.resize(); }, 200);
     }
   }
 
@@ -619,6 +629,7 @@
     document.getElementById('themeIcon').innerText = newTheme === 'dark' ? '☀️' : '🌙';
     document.getElementById('themeText').innerText = newTheme === 'dark' ? 'Tema Claro' : 'Modo Escuro';
     localStorage.setItem('theme_preference', newTheme);
+    renderizarGraficoProdutividade(obterListaFiltradaParaGrafico());
   }
 
   function setModo(modo) {
@@ -816,7 +827,8 @@
       }
     });
     const mesesUnicos = [...mesesSet].sort();
-    let htmlMes = `<option value="TODOS">📅 Todos os Meses (${registrosNuvem.length})</option>`;
+    
+    let htmlMes = `<option value="TODOS" selected>📅 Todos os Meses (${registrosNuvem.length})</option>`;
     mesesUnicos.forEach(m => {
       htmlMes += `<option value="${m}">Mês: ${m}</option>`;
     });
@@ -825,11 +837,13 @@
     const selectOp = document.getElementById('filtroOperadorGestor');
     const opsSet = new Set(registrosNuvem.map(i => i.operador).filter(Boolean));
     const opsUnicos = [...opsSet].sort();
-    let htmlOp = `<option value="TODOS">👥 Todos da Equipe</option>`;
+    let htmlOp = `<option value="TODOS" selected>👥 Todos da Equipe</option>`;
     opsUnicos.forEach(op => {
       htmlOp += `<option value="${op}">${op}</option>`;
     });
     selectOp.innerHTML = htmlOp;
+
+    document.getElementById('filtroCicloGestor').value = 'TODOS';
   }
 
   function aplicarFiltrosGestor() {
@@ -837,32 +851,26 @@
     renderizarAbasELista();
   }
 
-  function renderizarAbasELista() {
-    const dataHoje = getHojeDataFormatada();
+  function obterListaFiltradaParaGrafico() {
     const user = auth.currentUser;
     const isGestor = user && user.email.toLowerCase() === emailGestor;
-
-    let listaParaExibir = registrosNuvem;
+    let lista = registrosNuvem;
 
     if (isGestor) {
       const mesFiltro = document.getElementById('filtroMesGestor').value;
       const cicloFiltro = document.getElementById('filtroCicloGestor').value;
       const opFiltro = document.getElementById('filtroOperadorGestor').value;
 
-      if (opFiltro !== 'TODAS') {
-        listaParaExibir = listaParaExibir.filter(i => i.operador === opFiltro);
-      }
-
-      if (mesFiltro !== 'TODAS') {
-        listaParaExibir = listaParaExibir.filter(i => {
+      if (opFiltro && opFiltro !== 'TODAS') lista = lista.filter(i => i.operador === opFiltro);
+      if (mesFiltro && mesFiltro !== 'TODAS') {
+        lista = lista.filter(i => {
           if (!i.data) return false;
-          const partes = i.data.split('/');
-          return `${partes[1]}/${partes[2]}` === mesFiltro;
+          const p = i.data.split('/');
+          return `${p[1]}/${p[2]}` === mesFiltro;
         });
       }
-
-      if (cicloFiltro !== 'TODAS') {
-        listaParaExibir = listaParaExibir.filter(i => {
+      if (cicloFiltro && cicloFiltro !== 'TODAS') {
+        lista = lista.filter(i => {
           if (!i.data) return false;
           const dia = parseInt(i.data.split('/')[0], 10);
           if (cicloFiltro === 'CICLO_1') return dia >= 1 && dia <= 3;
@@ -874,9 +882,71 @@
         });
       }
     }
+    return lista;
+  }
+
+  function renderizarGraficoProdutividade(lista) {
+    const contagemPorData = {};
+    lista.forEach(item => {
+      if (item.data) {
+        contagemPorData[item.data] = (contagemPorData[item.data] || 0) + 1;
+      }
+    });
+
+    const datasOrdenadas = Object.keys(contagemPorData).sort((a, b) => {
+      const pA = a.split('/'), pB = b.split('/');
+      return new Date(pA[2], pA[1]-1, pA[0]) - new Date(pB[2], pB[1]-1, pB[0]);
+    });
+
+    const quantidades = datasOrdenadas.map(d => contagemPorData[d]);
+
+    const ctx = document.getElementById('graficoProdutividade').getContext('2d');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: datasOrdenadas,
+        datasets: [{
+          label: 'Monitorias Realizadas',
+          data: quantidades,
+          backgroundColor: isDark ? '#3949ab' : '#1a237e',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: isDark ? '#aaa' : '#555', font: { size: 11 } }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, color: isDark ? '#aaa' : '#555', font: { size: 11 } },
+            grid: { color: isDark ? '#333' : '#eee' }
+          }
+        }
+      }
+    });
+  }
+
+  function renderizarAbasELista() {
+    const dataHoje = getHojeDataFormatada();
+    const listaParaExibir = obterListaFiltradaParaGrafico();
 
     document.getElementById('todayCounter').innerText = listaParaExibir.filter(i => i.data === dataHoje).length;
-    document.getElementById('totalCounter').innerText = listaParaExibir.length;
+    document.getElementById('totalCounter').innerText = registrosNuvem.length;
+
+    renderizarGraficoProdutividade(listaParaExibir);
 
     const tabsContainer = document.getElementById('dateTabsContainer');
     const listContainer = document.getElementById('historyContainer');
@@ -896,7 +966,6 @@
 
     const filtradosPorData = activeDateTab === 'TODAS' ? listaParaExibir : listaParaExibir.filter(i => i.data === activeDateTab);
     
-    // RENDERIZAÇÃO DOS CARDS COM FUNÇÃO DE MINIMIZAR / EXPANDIR
     listContainer.innerHTML = filtradosPorData.map(item => `
       <div class="history-card-item">
         <div class="history-card-header" onclick="toggleCardBody('${item.id}')">
@@ -915,7 +984,6 @@
     `).join('');
   }
 
-  // FUNÇÃO PARA EXPANDIR OU RECOLHER O CARD
   function toggleCardBody(id) {
     const bodyEl = document.getElementById(`body-${id}`);
     const iconEl = document.getElementById(`icon-${id}`);
@@ -948,7 +1016,7 @@
         await db.collection("monitorias").doc(id).delete();
         if (currentEditingId === id) currentEditingId = null;
         carregarHistoricoDaNuvem(); 
-        showToast('🗑️️ Removido com sucesso.');
+        showToast('🗑 Removido com sucesso.');
       } catch(error) {
         alert("Erro ao excluir: " + error.message);
       }
@@ -992,42 +1060,8 @@
     }); return f;
   }
 
-  function obterListaFiltradaParaExportacao() {
-    const user = auth.currentUser;
-    const isGestor = user && user.email.toLowerCase() === emailGestor;
-
-    let lista = registrosNuvem;
-    if (isGestor) {
-      const mesFiltro = document.getElementById('filtroMesGestor').value;
-      const cicloFiltro = document.getElementById('filtroCicloGestor').value;
-      const opFiltro = document.getElementById('filtroOperadorGestor').value;
-
-      if (opFiltro !== 'TODAS') lista = lista.filter(i => i.operador === opFiltro);
-      if (mesFiltro !== 'TODAS') {
-        lista = lista.filter(i => {
-          if (!i.data) return false;
-          const p = i.data.split('/');
-          return `${p[1]}/${p[2]}` === mesFiltro;
-        });
-      }
-      if (cicloFiltro !== 'TODAS') {
-        lista = lista.filter(i => {
-          if (!i.data) return false;
-          const dia = parseInt(i.data.split('/')[0], 10);
-          if (cicloFiltro === 'CICLO_1') return dia >= 1 && dia <= 3;
-          if (cicloFiltro === 'CICLO_2') return dia >= 5 && dia <= 10;
-          if (cicloFiltro === 'CICLO_3') return dia >= 12 && dia <= 17;
-          if (cicloFiltro === 'CICLO_4') return dia >= 19 && dia <= 24;
-          if (cicloFiltro === 'CICLO_5') return dia >= 26 && dia <= 31;
-          return true;
-        });
-      }
-    }
-    return activeDateTab === 'TODAS' ? lista : lista.filter(i => i.data === activeDateTab);
-  }
-
   function exportarExcel() {
-    const f = obterListaFiltradaParaExportacao();
+    const f = obterListaFiltradaParaGrafico();
     if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
 
     const dataRows = f.map(h => ({ "Protocolo": h.protocolo, "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Texto": h.text }));
@@ -1038,7 +1072,7 @@
   }
 
   function exportarTxt() {
-    const f = obterListaFiltradaParaExportacao();
+    const f = obterListaFiltradaParaGrafico();
     if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
     
     let content = "=== RELATÓRIO CONSOLIDADO DE MONITORIAS ===\n\n";
