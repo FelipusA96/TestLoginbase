@@ -519,7 +519,6 @@
 
   function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 
-  // FUNÇÃO PARA MINIMIZAR / EXPANDIR O GRÁFICO
   function toggleChartCard() {
     const bodyEl = document.getElementById('chartBodyContainer');
     const iconEl = document.getElementById('chartToggleIcon');
@@ -547,7 +546,7 @@
 
   function abrirPopOutWindow() {
     const popWin = window.open("", "ChecklistPopout", "width=450,height=650,resizable=yes,scrollbars=yes");
-    if (!popWin) { showToast("⚠️ Permita pop-ups no seu navegador."); return; }
+    if (!popWin) { showToast("⚠️️ Permita pop-ups no seu navegador."); return; }
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     popWin.document.write(`
@@ -904,7 +903,7 @@
     return lista;
   }
 
-  // IMPORTAÇÃO CORRIGIDA PARA O FORMATO DO TXT EXPORTADO
+  // IMPORTAÇÃO ROBUSTA PARA SUPORTAR EXCEL (E XLSX) E TXT
   async function importarArquivoParaNuvem(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -926,11 +925,12 @@
 
           let importadosCount = 0;
           for (let row of rows) {
-            const protocolo = String(row.Protocolo || row.protocolo || Date.now() + Math.random());
-            const operador = row.Operador || row.operador || 'Não identificado';
-            const dataReg = row.Data || row.data || getHojeDataFormatada();
-            const tipo = row.Tipo || row.tipo || 'MONITORIA';
-            const texto = row.Texto || row.texto || `Protocolo: ${protocolo}\nOperador(a): ${operador}`;
+            // Tenta pegar as colunas independentemente de maiúsculas/minúsculas ou variações
+            const protocolo = String(row.Protocolo || row.protocolo || row.PROTOCOLO || Date.now() + Math.random());
+            const operador = row.Operador || row.operador || row.OPERADOR || 'Não identificado';
+            const dataReg = row.Data || row.data || row.DATA || getHojeDataFormatada();
+            const tipo = row.Tipo || row.tipo || row.TIPO || 'MONITORIA';
+            const texto = row.Texto || row.texto || row.TEXTO || `Protocolo: ${protocolo}\nOperador(a): ${operador}`;
 
             const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
             if (q.empty) {
@@ -947,7 +947,7 @@
               importadosCount++;
             }
           }
-          showToast(`✅ ${importadosCount} registros importados com sucesso!`);
+          showToast(`✅ ${importadosCount} registros do Excel importados com sucesso!`);
           carregarHistoricoDaNuvem();
         };
         reader.readAsArrayBuffer(file);
@@ -955,7 +955,6 @@
         const reader = new FileReader();
         reader.onload = async function(e) {
           const content = e.target.result;
-          // Quebra o arquivo usando o cabeçalho dos blocos do TXT exportado
           const blocos = content.split(/--- REGISTRO\s*#\d+\s*/);
           let importadosCount = 0;
 
@@ -963,20 +962,16 @@
             const textoLido = bloco.trim();
             if (!textoLido || textoLido.startsWith("=== HISTÓRICO")) continue;
 
-            // Extrai a data do cabeçalho (ex: Nome - 01/10/2026)
             const cabecalhoMatch = textoLido.match(/\(([^)]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})\)/);
             const operadorCabecalho = cabecalhoMatch ? cabecalhoMatch[1].trim() : '';
             const dataCabecalho = cabecalhoMatch ? cabecalhoMatch[2].trim() : '';
 
-            // Extrai o Protocolo de dentro do bloco
             const protMatch = textoLido.match(/Protocolo:\s*([^\r\n]+)/i);
             const protocolo = protMatch ? protMatch[1].trim() : String(Date.now() + Math.random());
 
-            // Extrai o Operador de dentro do bloco
             const opMatch = textoLido.match(/Operador\(a\):\s*([^\r\n]+)/i);
             const operador = opMatch ? opMatch[1].trim() : (operadorCabecalho || 'Não identificado');
 
-            // Extrai a data realizada
             const realizadaMatch = textoLido.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
             const dataReg = realizadaMatch ? realizadaMatch[1].trim() : (dataCabecalho || getHojeDataFormatada());
 
@@ -1181,7 +1176,7 @@
   function validarECarregar() { limparErrosVisuais(); atualizarInterface(); }
   function verificarCamposFaltantes() {
     let f = []; camposObrigatorios.forEach(id => {
-      const el = document.getElementById(id); if (!el || !el.value.trim()) { el.classList.add('field-error'); f.push(id); } else { el.classList.remove('field-error'); }
+      const el = document.getElementById(id); if (!el || !el.value.trim()) { el.classList.add('field-error'); f.push(id); } else { el.classList.remove('key'); }
     }); return f;
   }
 
