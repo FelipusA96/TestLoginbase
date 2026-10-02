@@ -664,7 +664,6 @@
     if (!raw.trim()) { showToast('Cole algum texto primeiro.'); return; }
     limparErrosVisuais();
 
-    // CAPTURA A DATA "REALIZADA" DO TEXTO BRUTO (SE HOUVER) OU USA HOJE
     const realizadaMatch = raw.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
     const dataRealizada = realizadaMatch ? realizadaMatch[1].trim() : getHojeDataFormatada();
 
@@ -908,6 +907,18 @@
     return lista;
   }
 
+  async function atualizarStatusRegistrado(id, marcado) {
+    try {
+      await db.collection("monitorias").doc(id).update({ registradoSistema: marcado });
+      const item = registrosNuvem.find(i => i.id === id);
+      if (item) item.registradoSistema = marcado;
+      showToast(marcado ? "✔️ Marcado como registrado no sistema!" : "🔄 Desmarcado.");
+    } catch (err) {
+      console.error("Erro ao atualizar status:", err);
+      showToast("❌ Erro ao salvar status do checkbox.");
+    }
+  }
+
   async function importarArquivoParaNuvem(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -945,6 +956,7 @@
                 tipo: tipo,
                 userId: user.uid,
                 autorEmail: user.email,
+                registradoSistema: false,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
               });
               importadosCount++;
@@ -984,6 +996,7 @@
                 tipo: 'MONITORIA',
                 userId: user.uid,
                 autorEmail: user.email,
+                registradoSistema: false,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
               });
               importadosCount++;
@@ -1088,9 +1101,12 @@
     listContainer.innerHTML = filtradosPorData.map(item => `
       <div class="history-card-item">
         <div class="history-card-header" onclick="toggleCardBody('${item.id}')">
-          <div>
-            <strong>${escapeHtml(item.operador)}</strong> 
-            <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" ${item.registradoSistema ? 'checked' : ''} onclick="event.stopPropagation(); atualizarStatusRegistrado('${item.id}', this.checked)" title="Registrado no sistema externo">
+            <div>
+              <strong>${escapeHtml(item.operador)}</strong> 
+              <span style="color:var(--text-muted); font-size:11px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
+            </div>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <span id="icon-${item.id}" style="font-weight:bold; font-size:12px;">🔽 Ver Detalhes</span>
@@ -1183,7 +1199,7 @@
     const f = obterListaFiltradaParaGrafico();
     if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
 
-    const dataRows = f.map(h => ({ "Protocolo": h.protocolo, "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Texto": h.text }));
+    const dataRows = f.map(h => ({ "Protocolo": h.protocolo, "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Registrado No Sistema": h.registradoSistema ? "SIM" : "NÃO", "Texto": h.text }));
     const ws = XLSX.utils.json_to_sheet(dataRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
@@ -1196,14 +1212,13 @@
     
     let content = "=== HISTÓRICO DE MONITORIAS E REORIENTAÇÕES ===\n\n";
     f.forEach((h, index) => {
-      content += `--- REGISTRO #${index + 1} (${h.operador} - ${h.data}) ---\n`;
+      content += `--- REGISTRO #${index + 1} (${h.operador} - ${h.data}) [Registrado: ${h.registradoSistema ? 'SIM' : 'NÃO'}] ---\n`;
       content += h.text + "\n\n";
     });
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `relatorio_gestao_${new Date().toISOString().slice(0,10)}.toISOString().slice(0,10)}.txt`;
     a.download = `relatorio_gestao_${new Date().toISOString().slice(0,10)}.txt`;
     a.click();
   }
