@@ -393,7 +393,7 @@
           </div>
         </div>
 
-        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE DIÁRIA (AGORA MINIMIZÁVEL) -->
+        <!-- CARD DO GRÁFICO DE PRODUTIVIDADE DIÁRIA (MINIMIZÁVEL) -->
         <div class="card" style="margin-bottom: 12px; padding: 10px 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleChartCard()">
             <span style="font-size: 13px; font-weight: bold; color: var(--title-color);">📈 Produtividade Diária (Monitorias Realizadas por Dia)</span>
@@ -904,6 +904,7 @@
     return lista;
   }
 
+  // IMPORTAÇÃO CORRIGIDA PARA O FORMATO DO TXT EXPORTADO
   async function importarArquivoParaNuvem(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -954,18 +955,30 @@
         const reader = new FileReader();
         reader.onload = async function(e) {
           const content = e.target.result;
-          const blocos = content.split(/--- REGISTRO /);
+          // Quebra o arquivo usando o cabeçalho dos blocos do TXT exportado
+          const blocos = content.split(/--- REGISTRO\s*#\d+\s*/);
           let importadosCount = 0;
 
           for (let bloco of blocos) {
-            if (!bloco.trim()) continue;
-            const protMatch = bloco.match(/Prot:\s*([^\s|]+)/);
-            const opMatch = bloco.match(/\|\s*([^-]+)\s*-/);
-            const dataMatch = bloco.match(/-\s*(\d{2}\/\d{2}\/\d{4})/);
+            const textoLido = bloco.trim();
+            if (!textoLido || textoLido.startsWith("=== HISTÓRICO")) continue;
 
-            const protocolo = protMatch ? protMatch[1] : String(Date.now() + Math.random());
-            const operador = opMatch ? opMatch[1].trim() : 'Não identificado';
-            const dataReg = dataMatch ? dataMatch[1] : getHojeDataFormatada();
+            // Extrai a data do cabeçalho (ex: Nome - 01/10/2026)
+            const cabecalhoMatch = textoLido.match(/\(([^)]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})\)/);
+            const operadorCabecalho = cabecalhoMatch ? cabecalhoMatch[1].trim() : '';
+            const dataCabecalho = cabecalhoMatch ? cabecalhoMatch[2].trim() : '';
+
+            // Extrai o Protocolo de dentro do bloco
+            const protMatch = textoLido.match(/Protocolo:\s*([^\r\n]+)/i);
+            const protocolo = protMatch ? protMatch[1].trim() : String(Date.now() + Math.random());
+
+            // Extrai o Operador de dentro do bloco
+            const opMatch = textoLido.match(/Operador\(a\):\s*([^\r\n]+)/i);
+            const operador = opMatch ? opMatch[1].trim() : (operadorCabecalho || 'Não identificado');
+
+            // Extrai a data realizada
+            const realizadaMatch = textoLido.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
+            const dataReg = realizadaMatch ? realizadaMatch[1].trim() : (dataCabecalho || getHojeDataFormatada());
 
             const q = await db.collection("monitorias").where("protocolo", "==", protocolo).get();
             if (q.empty) {
@@ -973,7 +986,7 @@
                 protocolo: protocolo,
                 operador: operador,
                 data: dataReg,
-                text: bloco.trim(),
+                text: textoLido,
                 tipo: 'MONITORIA',
                 userId: user.uid,
                 autorEmail: user.email,
@@ -1187,9 +1200,9 @@
     const f = obterListaFiltradaParaGrafico();
     if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
     
-    let content = "=== RELATÓRIO CONSOLIDADO DE MONITORIAS ===\n\n";
+    let content = "=== HISTÓRICO DE MONITORIAS E REORIENTAÇÕES ===\n\n";
     f.forEach((h, index) => {
-      content += `--- REGISTRO #${index + 1} (Prot: ${h.protocolo} | ${h.operador} - ${h.data}) ---\n`;
+      content += `--- REGISTRO #${index + 1} (${h.operador} - ${h.data}) ---\n`;
       content += h.text + "\n\n";
     });
 
