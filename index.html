@@ -73,7 +73,7 @@
     .sidebar-footer { padding: 20px 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px; }
     .sidebar-footer button { padding: 12px; display: flex; align-items: center; gap: 14px; overflow: hidden; justify-content: flex-start; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     
-    .sidebar-icon { font-size: 20px; min-width: 24px; text-align: center; }
+    .sidebar-icon { font-size: 20px; min-width: 24px; text-align: center; display: inline-flex; align-items: center; justify-content: center; }
     .sidebar-text { opacity: 1; transition: opacity 0.2s; }
     
     .sidebar.collapsed .sidebar-text, .sidebar.collapsed .logo-container { opacity: 0; display: none; }
@@ -210,9 +210,15 @@
         <span class="sidebar-icon" id="themeIcon">🌙</span> 
         <span class="sidebar-text" id="themeText">Modo Escuro</span>
       </button>
-      <button class="btn-danger btn-block" onclick="fazerLogout()" title="Sair do Sistema">
-        <span class="sidebar-icon">🚪</span> 
-        <span class="sidebar-text">Sair do Sistema</span>
+      <button class="btn-danger btn-block" onclick="fazerLogout()" title="Sair">
+        <span class="sidebar-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </span> 
+        <span class="sidebar-text">Sair</span>
       </button>
     </div>
   </aside>
@@ -580,14 +586,21 @@
       popWin.document.getElementById('popObservacao').value = document.getElementById('fieldObservacao').value;
       popWin.document.getElementById('popOcorrencia').value = document.getElementById('fieldOcorrencia').value;
 
-      popWin.document.getElementById('btnPopLimparCampos').onclick = function() { limparCamposPopout(popWin.document); };
+      // Botão "Limpar" do pop-up: limpa a janela e também o formulário/ficha da tela principal
+      popWin.document.getElementById('btnPopLimparCampos').onclick = function() { limparCamposPopout(popWin.document, true); };
       popWin.document.getElementById('btnEnviarPopout').onclick = function() { enviarDadosDoPopout(popWin.document); };
     }, 150);
   }
 
-  function limparCamposPopout(docContext) {
+  // Limpa todos os campos do pop-up. Se limparTelaPrincipal = true, limpa também a tela principal.
+  // (No envio, o parâmetro fica false para não apagar a ficha recém-gerada.)
+  function limparCamposPopout(docContext, limparTelaPrincipal = false) {
+    docContext.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
     docContext.getElementById('popDataRealizada').value = getHojeDataFormatada();
-    ['popOperador','popDataHora','popProtocolo','popNotaMonitoria','popNotaAqm','popMo','popAtendimento','popObservacao','popOcorrencia'].forEach(id => docContext.getElementById(id).value = '');
+    const campoOperador = docContext.getElementById('popOperador');
+    if (campoOperador) campoOperador.focus();
+
+    if (limparTelaPrincipal) limparRelatorioBruto();
   }
 
   function enviarDadosDoPopout(docContext) {
@@ -635,7 +648,9 @@
     const toast = document.getElementById('toast'); toast.innerText = msg; toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 3000);
   }
 
-  function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function escapeHtml(text) {
+    return String(text ?? '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
 
   function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -840,13 +855,16 @@
 
   function popularFiltroOperadorGestor() {
     const selectOp = document.getElementById('filtroOperadorGestor');
+    const selecionadoAntes = selectOp.value || 'TODOS';
     const opsSet = new Set(registrosNuvem.map(i => i.operador).filter(Boolean));
     const opsUnicos = [...opsSet].sort();
-    let htmlOp = `<option value="TODOS" selected>👥 Todos da Equipe</option>`;
+    let htmlOp = `<option value="TODOS">👥 Todos da Equipe</option>`;
     opsUnicos.forEach(op => {
-      htmlOp += `<option value="${op}">${op}</option>`;
+      htmlOp += `<option value="${escapeHtml(op)}">${escapeHtml(op)}</option>`;
     });
     selectOp.innerHTML = htmlOp;
+    // Mantém o operador selecionado após recarregar a lista (se ainda existir)
+    selectOp.value = opsUnicos.includes(selecionadoAntes) ? selecionadoAntes : 'TODOS';
   }
 
   function aplicarFiltrosPeriodo() {
@@ -870,7 +888,8 @@
 
     if (isGestor) {
       const opFiltro = document.getElementById('filtroOperadorGestor').value;
-      if (opFiltro && opFiltro !== 'TODAS') {
+      // CORREÇÃO: o valor da opção "Todos da Equipe" é 'TODOS' (antes comparava com 'TODAS')
+      if (opFiltro && opFiltro !== 'TODOS') {
         lista = lista.filter(i => i.operador === opFiltro);
       }
     }
@@ -997,7 +1016,7 @@
             <input type="checkbox" style="width: 20px; height: 20px; cursor: pointer;" ${item.registradoSistema ? 'checked' : ''} onclick="event.stopPropagation(); atualizarStatusRegistrado('${item.id}', this.checked)" title="Registrado no sistema externo">
             <div>
               <strong style="font-size: 15px;">${escapeHtml(item.operador)}</strong> 
-              <span style="color:var(--text-muted); font-size:12px; margin-left: 8px;">(${escapeHtml(item.data)}) - <em>${item.tipo || 'MONITORIA'}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
+              <span style="color:var(--text-muted); font-size:12px; margin-left: 8px;">(${escapeHtml(item.data)}) - <em>${escapeHtml(item.tipo || 'MONITORIA')}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
             </div>
           </div>
           <div style="display: flex; gap: 10px; align-items: center;">
@@ -1011,13 +1030,18 @@
     `).join('');
   }
 
+  // ACCORDION: abre apenas um registro por vez (ao abrir um, os demais são recolhidos)
   function toggleCardBody(id) {
     const bodyEl = document.getElementById(`body-${id}`);
     const iconEl = document.getElementById(`icon-${id}`);
-    if (bodyEl.style.display === 'block') {
-      bodyEl.style.display = 'none';
-      iconEl.innerText = '🔽 Ver Detalhes';
-    } else {
+    const estavaAberto = bodyEl.style.display === 'block';
+
+    // Recolhe todos
+    document.querySelectorAll('.history-card-body').forEach(el => { el.style.display = 'none'; });
+    document.querySelectorAll('[id^="icon-"]').forEach(el => { el.innerText = '🔽 Ver Detalhes'; });
+
+    // Abre só o clicado (se já estava aberto, permanece recolhido)
+    if (!estavaAberto) {
       bodyEl.style.display = 'block';
       iconEl.innerText = '🔼 Recolher';
     }
