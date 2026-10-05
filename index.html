@@ -210,7 +210,7 @@
         <span class="sidebar-text" id="themeText">Modo Escuro</span>
       </button>
       <button class="btn-danger btn-block" onclick="fazerLogout()" title="Sair do Sistema">
-        <span class="sidebar-icon">🚪</span> 
+        <span class="sidebar-icon">⏏</span> 
         <span class="sidebar-text">Sair</span>
       </button>
     </div>
@@ -246,7 +246,7 @@
             <textarea id="rawInput" rows="6" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px;">
               <button class="btn btn-block" onclick="processarEAutoSalvar()">⚡ Extrair Dados e Salvar/Atualizar</button>
-              <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar Tudo</button>
+              <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️️ Limpar Tudo</button>
             </div>
           </div>
 
@@ -414,7 +414,7 @@
   <div class="checklist-container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #1a237e; padding-bottom: 6px;">
       <span style="font-weight:bold; color:#1a237e; font-size:15px;">📝 Checklist de Monitoria</span>
-      <button id="btnPopLimparCampos" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #c62828; color: #fff; border: none; border-radius: 4px; cursor: pointer;">🗑️ Limpar</button>
+      <button id="btnPopLimparCampos" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #c62828; color: #fff; border: none; border-radius: 4px; cursor:pointer;">🗑️ Limpar</button>
     </div>
     
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -479,7 +479,7 @@
   let activeDateTab = 'TODAS';
   let registrosNuvem = []; 
   let chartInstance = null;
-  let cardAbertoId = null; // Variável para controlar o comportamento Accordion
+  let idCardAberto = null; // Variável para controlar o Accordion
   const emailGestor = 'gestor.monit@painel.com';
   const camposObrigatorios = ['fieldDataRealizada','fieldOperador','fieldDataHora','fieldProtocolo','fieldNotaMonitoria','fieldMo','fieldAtendimento'];
 
@@ -557,4 +557,476 @@
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; background: ${isDark ? '#1e1e1e' : '#f0f2f5'}; color: ${isDark ? '#e0e0e0' : '#333'}; margin: 0; }
           input, textarea { width: 100%; padding: 8px; font-size: 13px; margin-top: 2px; box-sizing: border-box; background: ${isDark ? '#2d2d2d' : '#fff'}; color: ${isDark ? '#e0e0e0' : '#333'}; border: 1px solid ${isDark ? '#444' : '#ccc'}; border-radius: 4px; }
           label { font-size: 11px; font-weight: bold; margin-top: 6px; display: block; color: ${isDark ? '#aaa' : '#555'}; }
-          button { width: 100%; background: #2e7d32; color: white
+          button { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; font-size: 14px; }
+          button:hover { background: #1b5e20; }
+        </style>
+      </head>
+      <body>
+        ${document.getElementById('checklistTemplate').innerHTML}
+      </body>
+      </html>
+    `);
+    popWin.document.close();
+
+    setTimeout(() => {
+      popWin.document.getElementById('popDataRealizada').value = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
+      popWin.document.getElementById('popOperador').value = document.getElementById('fieldOperador').value;
+      popWin.document.getElementById('popDataHora').value = document.getElementById('fieldDataHora').value;
+      popWin.document.getElementById('popProtocolo').value = document.getElementById('fieldProtocolo').value;
+      popWin.document.getElementById('popNotaMonitoria').value = document.getElementById('fieldNotaMonitoria').value;
+      popWin.document.getElementById('popNotaAqm').value = document.getElementById('fieldNotaAqm').value;
+      popWin.document.getElementById('popMo').value = document.getElementById('fieldMo').value;
+      popWin.document.getElementById('popAtendimento').value = document.getElementById('fieldAtendimento').value;
+      popWin.document.getElementById('popObservacao').value = document.getElementById('fieldObservacao').value;
+      popWin.document.getElementById('popOcorrencia').value = document.getElementById('fieldOcorrencia').value;
+
+      popWin.document.getElementById('btnPopLimparCampos').onclick = function() { limparCamposPopout(popWin.document); };
+      popWin.document.getElementById('btnEnviarPopout').onclick = function() { enviarDadosDoPopout(popWin.document); };
+    }, 150);
+  }
+
+  function limparCamposPopout(docContext) {
+    docContext.getElementById('popDataRealizada').value = getHojeDataFormatada();
+    ['popOperador','popDataHora','popProtocolo','popNotaMonitoria','popNotaAqm','popMo','popAtendimento','popObservacao','popOcorrencia'].forEach(id => docContext.getElementById(id).value = '');
+  }
+
+  function enviarDadosDoPopout(docContext) {
+    const dtRealizada = docContext.getElementById('popDataRealizada').value.trim() || getHojeDataFormatada();
+    const op = docContext.getElementById('popOperador').value.trim();
+    const dtHora = docContext.getElementById('popDataHora').value.trim();
+    const prot = docContext.getElementById('popProtocolo').value.trim();
+    const notaMon = docContext.getElementById('popNotaMonitoria').value.trim();
+    const notaAqm = docContext.getElementById('popNotaAqm').value.trim();
+    const mo = docContext.getElementById('popMo').value.trim();
+    const atend = docContext.getElementById('popAtendimento').value.trim();
+    const obs = docContext.getElementById('popObservacao').value.trim();
+    const ocor = docContext.getElementById('popOcorrencia').value.trim();
+
+    document.getElementById('fieldDataRealizada').value = dtRealizada;
+    document.getElementById('fieldOperador').value = op;
+    document.getElementById('fieldDataHora').value = dtHora;
+    document.getElementById('fieldProtocolo').value = prot;
+    document.getElementById('fieldNotaMonitoria').value = notaMon;
+    document.getElementById('fieldNotaAqm').value = notaAqm;
+    document.getElementById('fieldMo').value = mo;
+    document.getElementById('fieldAtendimento').value = atend;
+    document.getElementById('fieldObservacao').value = obs;
+    document.getElementById('fieldOcorrencia').value = ocor;
+
+    const rawFormatado = `Realizada: ${dtRealizada}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${notaAqm}\nMonitoria: ${notaMon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
+    document.getElementById('rawInput').value = rawFormatado;
+
+    limparErrosVisuais(); atualizarInterface();
+    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Preencha os campos obrigatórios!'); return; }
+
+    verificarEProcessarSalvamento(rawFormatado, prot);
+    showToast('🚀 Ficha gerada via Pop-up e sincronizada!');
+    limparCamposPopout(docContext);
+  }
+
+  function getHojeDataFormatada() {
+    const hoje = new Date();
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    return `${dia}/${mes}/${hoje.getFullYear()}`;
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast'); toast.innerText = msg; toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 3000);
+  }
+
+  function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    Com certeza! Fiz todas as correções e melhorias que discutimos juntas. 
+
+Aqui está o que foi implementado nesta versão:
+1. **Comportamento *Accordion* no Histórico:** Agora, ao abrir os detalhes de uma monitoria, qualquer outra que estivesse aberta se recolhe automaticamente, mantendo a tela limpa. Clicar novamente na mesma monitoria fecha seus detalhes.
+2. **Botão de Sair Ajustado:** O texto do botão foi alterado para apenas **"Sair"** e o emoji foi atualizado para uma opção mais intuitiva (`⏏️` / ícone de saída).
+3. **Correção do Botão "Limpar" no Pop-up:** O evento de clique foi corrigido e agora limpa corretamente todos os campos da janela flutuante e reinicia a data de realização para o dia atual.
+
+Aqui está o **código HTML completo e atualizado**:
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Monitoria e Reorientação</title>
+  
+  <!-- Firebase Compat v10 -->
+  <script src="[https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js](https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js)"></script>
+  <script src="[https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js](https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js)"></script>
+  <script src="[https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js](https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js)"></script>
+
+  <!-- html2canvas, SheetJS e Chart.js -->
+  <script src="[https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js](https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js)"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js](https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js)"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/chart.js](https://cdn.jsdelivr.net/npm/chart.js)"></script>
+
+  <style>
+    :root {
+      --bg-color: #f0f2f5;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --text-muted: #555555;
+      --border-color: #cccccc;
+      --title-color: #1a237e;
+      --input-bg: #ffffff;
+      --input-readonly-bg: #e9ecef;
+      --history-hover: #f5f5f5;
+      --error-bg: #ffebee;
+      --error-border: #d32f2f;
+      --sidebar-bg: #1a237e;
+      --sidebar-text: #ffffff;
+      --sidebar-hover: #283593;
+      --sidebar-active: #3949ab;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --text-muted: #aaaaaa;
+      --border-color: #444444;
+      --title-color: #9fa8da;
+      --input-bg: #2d2d2d;
+      --input-readonly-bg: #383838;
+      --history-hover: #2a2a2a;
+      --error-bg: #3c1a1d;
+      --error-border: #f44336;
+      --sidebar-bg: #1e1e1e;
+      --sidebar-text: #e0e0e0;
+      --sidebar-hover: #2d2d2d;
+      --sidebar-active: #3949ab;
+    }
+
+    * { box-sizing: border-box; transition: background-color 0.2s, color 0.2s, width 0.3s; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; color: var(--text-color); height: 100vh; overflow: hidden; }
+    
+    .dashboard-layout { display: none; height: 100vh; width: 100vw; }
+    
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 100; overflow: hidden; white-space: nowrap; }
+    .sidebar.collapsed { width: 75px; } 
+    
+    .sidebar-header { padding: 20px 15px; font-size: 20px; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-header .logo-container { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+    .toggle-sidebar-btn { background: transparent; border: none; color: inherit; font-size: 22px; cursor: pointer; padding: 5px; min-width: 30px; display: flex; justify-content: center; }
+    .toggle-sidebar-btn:hover { background: rgba(255,255,255,0.1); border-radius: 6px; }
+    
+    .sidebar-menu { list-style: none; padding: 15px 10px; margin: 0; flex: 1; }
+    .sidebar-menu li { padding: 14px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 14px; transition: 0.2s; }
+    .sidebar-menu li:hover { background-color: var(--sidebar-hover); }
+    .sidebar-menu li.active { background-color: var(--sidebar-active); border-left: 4px solid #fff; }
+    
+    .sidebar-footer { padding: 20px 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px; }
+    .sidebar-footer button { padding: 12px; display: flex; align-items: center; gap: 14px; overflow: hidden; justify-content: flex-start; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    
+    .sidebar-icon { font-size: 20px; min-width: 24px; text-align: center; }
+    .sidebar-text { opacity: 1; transition: opacity 0.2s; }
+    
+    .sidebar.collapsed .sidebar-text, .sidebar.collapsed .logo-container { opacity: 0; display: none; }
+    .sidebar.collapsed .sidebar-header { justify-content: center; }
+    .sidebar.collapsed .sidebar-menu li { justify-content: center; padding: 14px 0; }
+    .sidebar.collapsed .sidebar-footer button { justify-content: center; padding: 12px 0; }
+
+    .main-content { flex: 1; overflow-y: auto; padding: 30px; }
+    .content-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .content-section.active { display: block; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    #login-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .login-box { background: var(--card-bg); padding: 40px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 100%; max-width: 350px; text-align: center; }
+    .login-box h2 { margin-top: 0; color: var(--title-color); }
+    .login-box input { margin-bottom: 15px; }
+
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
+    .header-title { margin: 0; color: var(--title-color); font-weight: 700; font-size: 24px; }
+    
+    .counters-container { display: flex; gap: 10px; align-items: center; }
+    .counter-badge { background-color: #1a237e; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .counter-badge.today { background-color: #2e7d32; }
+    .counter-number { background: #ffffff; color: #333; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+
+    .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } .dashboard-layout { flex-direction: column; } .sidebar { width: 100%; height: auto; } .sidebar.collapsed { width: 100%; } }
+    
+    .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; }
+    .card-title { font-size: 16px; font-weight: bold; color: var(--title-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    
+    textarea, input, select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: var(--input-bg); color: var(--text-color); }
+    textarea:focus, input:focus, select:focus { border-color: var(--title-color); outline: none; }
+    .field-error { border-color: var(--error-border) !important; background-color: var(--error-bg) !important; }
+
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 12px; font-weight: bold; color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .btn { background: #1a237e; color: #ffffff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn:hover { background: #283593; }
+    .btn-secondary { background: #2e7d32; }
+    .btn-secondary:hover { background: #1b5e20; }
+    .btn-purple { background: #6a1b9a; }
+    .btn-warning { background: #e65100; }
+    .btn-teal { background: #00796b; }
+    .btn-outline { background: transparent; color: var(--title-color); border: 1px solid var(--title-color); }
+    .btn-sidebar { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+    .btn-sidebar:hover { background: rgba(255,255,255,0.1); }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-save { background: #2e7d32; color: white; padding: 12px; font-size: 15px; margin-top: 15px; }
+    .btn-save:hover { background: #1b5e20; }
+    .btn-remove-item { background: transparent; color: #c62828; border: none; font-size: 14px; font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .btn-block { width: 100%; }
+
+    .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+    .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
+    .mode-btn.active { background: #1a237e; color: #ffffff; }
+
+    .filters-bar { background: var(--input-readonly-bg); padding: 14px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end; }
+    @media (max-width: 900px) { .filters-bar { grid-template-columns: 1fr; } }
+
+    .date-tabs-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+    .date-tab { padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 20px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; white-space: nowrap; }
+    .date-tab.active { background: var(--title-color); color: #ffffff; border-color: var(--title-color); }
+
+    .preview-container { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .sheet { border: 2px solid #000000; padding: 0; background: #ffffff !important; font-family: Arial, sans-serif; color: #000000 !important; width: 100%; box-sizing: border-box; }
+    .sheet * { color: #000000 !important; }
+    .sheet-header { text-align: center; padding: 10px 0 5px 0; font-weight: bold; font-size: 16px; text-transform: uppercase; }
+    .sheet-subheader { text-align: center; font-size: 11px; margin-bottom: 10px; font-weight: bold; }
+    .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: -1px; }
+    .sheet-table td, .sheet-table th { border: 1px solid #000000; padding: 6px 8px; font-size: 12px; vertical-align: top; }
+    .sheet-table th { background-color: #f2f2f2 !important; text-align: left; font-weight: bold; text-transform: uppercase; }
+    .bg-gray { background-color: #f8f9fa !important; }
+    .score-badge { font-weight: bold; color: #2e7d32 !important; font-size: 14px; }
+    .footer-warning { border-top: 1px solid #000000; padding: 12px; text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; margin-top: 15px; }
+
+    .output-box { background: #fdfbf7; border: 1px solid #e0b034; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.5; color: #222222; }
+
+    .history-container-box { background: var(--card-bg); padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 30px; }
+    .history-list { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+    
+    .history-card-item { background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+    .history-card-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; cursor: pointer; user-select: none; }
+    .history-card-header:hover { background-color: var(--history-hover); }
+    .history-card-body { padding: 20px; border-top: 1px solid var(--border-color); background: var(--card-bg); display: none; font-size: 13px; white-space: pre-wrap; font-family: monospace; line-height: 1.6; }
+    
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px; font-size: 14px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; }
+    .checklist-container { background: var(--card-bg); padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h2>📋 Acesso ao Painel</h2>
+    <input type="text" id="loginUser" placeholder="Login (ex: felipe.valente)">
+    <input type="password" id="loginPass" placeholder="Senha">
+    <button class="btn btn-block" onclick="fazerLogin()">Entrar no Sistema</button>
+    <div id="loginError" style="color:red; font-size:12px; margin-top:12px; display:none;">Credenciais inválidas.</div>
+  </div>
+</div>
+
+<!-- ESTRUTURA DO DASHBOARD -->
+<div class="dashboard-layout" id="appContainer">
+  
+  <!-- MENU LATERAL RETRÁTIL -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-container">
+        <span class="sidebar-icon">🌟</span>
+        <span class="sidebar-text">Painel QA</span>
+      </div>
+      <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Recolher/Expandir Menu">☰</button>
+    </div>
+    
+    <ul class="sidebar-menu">
+      <li class="active" id="menuMonitoria" onclick="switchSection('monitoria')" title="Realizar Monitoria">
+        <span class="sidebar-icon">📝</span>
+        <span class="sidebar-text">Realizar Monitoria</span>
+      </li>
+      <li id="menuHistorico" onclick="switchSection('historico')" title="Monitoria(s)">
+        <span class="sidebar-icon">📜</span>
+        <span class="sidebar-text">Monitoria(s)</span>
+      </li>
+    </ul>
+    
+    <div class="sidebar-footer">
+      <button class="btn-sidebar btn-block" id="themeToggle" onclick="toggleTheme()" title="Alterar Tema">
+        <span class="sidebar-icon" id="themeIcon">🌙</span> 
+        <span class="sidebar-text" id="themeText">Modo Escuro</span>
+      </button>
+      <button class="btn-danger btn-block" onclick="fazerLogout()" title="Sair do Sistema">
+        <span class="sidebar-icon">⏏️</span> 
+        <span class="sidebar-text">Sair</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-content">
+    <div class="header-bar">
+      <h2 class="header-title" id="sectionTitle">Realizar Monitoria</h2>
+      <div class="counters-container">
+        <div class="counter-badge today" title="Registros de Hoje"><span>Hoje:</span><span id="todayCounter" class="counter-number">0</span></div>
+        <div class="counter-badge" title="Total na Nuvem"><span>Total:</span><span id="totalCounter" class="counter-number">0</span></div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 1: REALIZAR MONITORIA -->
+    <section id="section-monitoria" class="content-section active">
+      <div class="mode-selector">
+        <div id="btnModeMonitoria" class="mode-btn active" onclick="setModo('MONITORIA')">Ficha Visual de Monitoria</div>
+        <div id="btnModeReorientacao" class="mode-btn" onclick="setModo('REORIENTACAO')">E-mail de Reorientação</div>
+      </div>
+
+      <div class="grid-layout">
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>1. Cole o Relatório Bruto</span>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="abrirPopOutWindow()">🪟 Pop-up</button>
+                <button class="btn btn-outline" style="padding: 3px 8px; font-size: 11px;" onclick="copiarMascaraParaClipboard()">📋 Máscara</button>
+              </div>
+            </div>
+            <textarea id="rawInput" rows="6" spellcheck="true" placeholder="Cole aqui o texto da monitoria..."></textarea>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px;">
+              <button class="btn btn-block" onclick="processarEAutoSalvar()">⚡ Extrair Dados e Salvar/Atualizar</button>
+              <button class="btn btn-outline" onclick="limparRelatorioBruto()">🗑️ Limpar Tudo</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">2. Revisar e Salvar Registro</div>
+            <div class="form-row" id="groupReorientOptions" style="display: none;">
+              <div class="form-group">
+                <label>Saudação / Período</label>
+                <select id="fieldSaudacao" onchange="atualizarInterface()">
+                  <option value="Boa tarde">Boa tarde</option>
+                  <option value="Bom dia">Bom dia</option>
+                  <option value="Boa noite">Boa noite</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Supervisor Responsável</label>
+                <select id="fieldSupervisor" onchange="atualizarInterface()">
+                  <option value="Kelvin">Kelvin</option>
+                  <option value="Eliane">Eliane</option>
+                  <option value="José">José</option>
+                  <option value="Leidiane">Leidiane</option>
+                  <option value="Diogo">Diogo</option>
+                  <option value="Pamela">Pamela</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group"><label>Data Realizada *</label><input type="text" id="fieldDataRealizada" oninput="validarECarregar()"></div>
+              <div class="form-group"><label>Operador(a) *</label><input type="text" id="fieldOperador" oninput="validarECarregar()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Data/Hora Atendimento *</label><input type="text" id="fieldDataHora" oninput="validarECarregar()"></div>
+              <div class="form-group"><label>Protocolo *</label><input type="text" id="fieldProtocolo" oninput="validarECarregar()"></div>
+            </div>
+            <div class="form-row" id="rowNotas">
+              <div class="form-group"><label>Nota Monitoria *</label><input type="text" id="fieldNotaMonitoria" oninput="validarECarregar()"></div>
+              <div class="form-group"><label>Nota AQM</label><input type="text" id="fieldNotaAqm" oninput="validarECarregar()"></div>
+            </div>
+            <div class="form-group"><label>M.O. *</label><input type="text" id="fieldMo" oninput="validarECarregar()"></div>
+            <div class="form-group"><label>Atendimento / Solicitação *</label><textarea id="fieldAtendimento" rows="2" oninput="validarECarregar()"></textarea></div>
+            <div class="form-group"><label>Observação(ões)</label><textarea id="fieldObservacao" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+            <div class="form-group"><label>Ocorrência(s)</label><textarea id="fieldOcorrencia" rows="2" placeholder="-Não se aplica." oninput="validarECarregar()"></textarea></div>
+            
+            <button class="btn btn-save btn-block" onclick="salvarRegistroManualmente()">💾 Salvar Correções no Registro Atual</button>
+          </div>
+        </div>
+
+        <div>
+          <div id="viewMonitoria" class="preview-container">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+              <button class="btn btn-secondary" onclick="copiarFichaFormatada()">📋 Copiar Formatado</button>
+              <button class="btn btn-purple" onclick="copiarFichaComoImagem()">🖼 Copiar Imagem</button>
+            </div>
+
+            <div id="fichaRender" class="sheet">
+              <div class="sheet-header">FEEDBACK MONITORIA</div>
+              <div class="sheet-subheader">Data de Realização: <span id="outDataRealizada">---</span></div>
+              <table class="sheet-table">
+                <tr><td colspan="2"><strong>Operador(a):</strong> <span id="outOperador">---</span></td></tr>
+                <tr class="bg-gray">
+                  <td width="50%"><strong>NOTA MONITORIA:</strong> <span id="outNotaMonitoria" class="score-badge">--</span></td>
+                  <td width="50%"><strong>NOTA AQM:</strong> <span id="outNotaAqm" class="score-badge">--</span></td>
+                </tr>
+              </table>
+              <table class="sheet-table">
+                <tr>
+                  <td width="50%"><strong>PROTOCOLO:</strong> <br><span id="outProtocolo">---</span></td>
+                  <td width="50%"><strong>M.O.:</strong> <br><span id="outMo">---</span></td>
+                </tr>
+                <tr><td colspan="2"><strong>DATA DO ATENDIMENTO:</strong> <span id="outDataHora">---</span></td></tr>
+              </table>
+              <table class="sheet-table">
+                <tr><th>DESCRIÇÃO DO ATENDIMENTO</th></tr>
+                <tr><td><div id="outAtendimento">---</div></td></tr>
+              </table>
+              <table class="sheet-table">
+                <tr><th>OBSERVAÇÕES / PONTOS DE ATENÇÃO</th></tr>
+                <tr>
+                  <td>
+                    <p style="margin: 0 0 8px 0;"><strong>✨ Ponto Forte:</strong><br>Seu empenho reforça seu potencial. Constância e foco trarão resultados ainda maiores.</p>
+                    <p style="margin: 0 0 8px 0;"><strong>💡 Observação(ões):</strong><br><span id="outObservacao">-Não se aplica.</span></p>
+                    <p style="margin: 0;"><strong>🔍 Ocorrência(s):</strong><br><span id="outOcorrencia">-Não se aplica.</span></p>
+                  </td>
+                </tr>
+              </table>
+              <div class="footer-warning">QUALQUER DÚVIDA OU CONTESTAÇÃO, ACIONAR SUA SUPERVISÃO! OBRIGADO</div>
+            </div>
+
+            <div style="margin-top: 20px; border-top: 2px dashed var(--border-color); padding-top: 15px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="margin: 0;">📝 Justificativa Rápida</label>
+                <button class="btn btn-teal" style="padding: 4px 10px; font-size: 11px;" onclick="copiarTextoJustificativa()">📋 Copiar</button>
+              </div>
+              <div id="justificativaRender" class="output-box">---</div>
+            </div>
+          </div>
+
+          <div id="viewReorientacao" class="preview-container" style="display: none;">
+            <button class="btn btn-warning btn-block" style="margin-bottom: 15px;" onclick="copiarTextoReorientacao()">📋 Copiar Texto do E-mail</button>
+            <div id="reorientRender" class="output-box">---</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 2: MONITORIA(S) / GESTÃO -->
+    <section id="section-historico" class="content-section">
+      <div class="card">
+        <div class="card-title">
+          <span>📜 Monitoria(s) Salvas no Banco de Dados</span>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
+            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
+          </div>
+        </div>
+
+        <!-- PAINEL DE FILTROS -->
+        <div class="filters-bar">
+          <div class="form-group" style="margin:0;">
+            <label>Data Início</label>
+            <input type="date" id="filtroDataInicio" onchange="aplicarFiltrosPeriodo()">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Data Fim</label>
+            <input type="date" id="filtroDataFim" onchange="aplicarFiltrosPeriodo()">
+          </div>
+          <div class="form-group" id="groupFiltroOperador" style="margin:0; display: none;">
+            <label>Operador(a)</label>
+            <select id="filtroOperadorGestor" onchange="aplicarFiltrosPeriodo()">
+              <option value="TODOS">👥 Todos da Equipe</option>
