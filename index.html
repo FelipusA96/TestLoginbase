@@ -13,7 +13,9 @@
   <!-- html2canvas, SheetJS e Chart.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <script>try { if (localStorage.getItem('theme_preference') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}</script>
 
   <style>
     :root {
@@ -52,10 +54,13 @@
       --sidebar-active: #3949ab;
     }
 
-    * { box-sizing: border-box; transition: background-color 0.2s, color 0.2s, width 0.3s; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; color: var(--text-color); height: 100vh; overflow: hidden; }
+    * { box-sizing: border-box; }
+    .card, .btn, .mode-btn, .date-tab, input, textarea, select { transition: background-color 0.2s, color 0.2s, border-color 0.2s; }
+    .sidebar { transition: width 0.3s; }
+    [role="button"]:focus-visible, button:focus-visible { outline: 2px solid #5c6bc0; outline-offset: 2px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); margin: 0; color: var(--text-color); height: 100vh; height: 100dvh; overflow: hidden; }
     
-    .dashboard-layout { display: none; height: 100vh; width: 100vw; }
+    .dashboard-layout { display: none; height: 100vh; height: 100dvh; width: 100vw; }
     
     .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 100; overflow: hidden; white-space: nowrap; }
     .sidebar.collapsed { width: 75px; } 
@@ -116,6 +121,7 @@
 
     .btn { background: #1a237e; color: #ffffff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn:hover { background: #283593; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-secondary { background: #2e7d32; }
     .btn-secondary:hover { background: #1b5e20; }
     .btn-purple { background: #6a1b9a; }
@@ -134,7 +140,7 @@
     .mode-btn { flex: 1; padding: 12px; border: 2px solid var(--title-color); background: var(--card-bg); color: var(--title-color); border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; font-size: 15px; }
     .mode-btn.active { background: #1a237e; color: #ffffff; }
 
-    .filters-bar { background: var(--input-readonly-bg); padding: 14px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end; }
+    .filters-bar { background: var(--input-readonly-bg); padding: 14px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: flex-end; }
     @media (max-width: 900px) { .filters-bar { grid-template-columns: 1fr; } }
 
     .date-tabs-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
@@ -174,8 +180,8 @@
 <div id="login-overlay">
   <div class="login-box">
     <h2>📋 Acesso ao Painel</h2>
-    <input type="text" id="loginUser" placeholder="Login (ex: felipe.valente)">
-    <input type="password" id="loginPass" placeholder="Senha">
+    <input type="text" id="loginUser" placeholder="Login (ex: felipe.valente)" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Senha" autocomplete="current-password">
     <button class="btn btn-block" onclick="fazerLogin()">Entrar no Sistema</button>
     <div id="loginError" style="color:red; font-size:12px; margin-top:12px; display:none;">Credenciais inválidas.</div>
   </div>
@@ -366,6 +372,7 @@
         <div class="card-title">
           <span>📜 Monitoria(s) Salvas no Banco de Dados</span>
           <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="carregarHistorico()" title="Recarregar da nuvem">🔄 Atualizar</button>
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="exportarExcel()">📊 Exportar Excel</button>
             <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="exportarTxt()">📥 Exportar TXT</button>
           </div>
@@ -466,7 +473,9 @@
 <div id="toast" class="toast">Texto copiado com sucesso!</div>
 
 <script>
-  // CONFIGURAÇÃO FIREBASE
+  // ============================================================
+  // CONFIGURAÇÃO
+  // ============================================================
   const firebaseConfig = {
     apiKey: "AIzaSyBDOwfE13NuGGyfQ4LxFgKuXt5mtsGal4w",
     authDomain: "painelmonitoria.firebaseapp.com",
@@ -480,542 +489,573 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
 
-  // VARIÁVEIS GLOBAIS
+  const COLECAO = 'monitorias';
+  const EMAIL_GESTOR = 'gestor.monit@painel.com';
+  const NAO_SE_APLICA = '-Não se aplica.';
+  const REGEX_DATA = /^\d{2}\/\d{2}\/\d{4}$/;
+
+  // chave lógica -> id do input na tela principal
+  const CAMPOS = {
+    dataRealizada: 'fieldDataRealizada', operador: 'fieldOperador', dataHora: 'fieldDataHora',
+    protocolo: 'fieldProtocolo', notaMonitoria: 'fieldNotaMonitoria', notaAqm: 'fieldNotaAqm',
+    mo: 'fieldMo', atendimento: 'fieldAtendimento', observacao: 'fieldObservacao', ocorrencia: 'fieldOcorrencia'
+  };
+  const OBRIGATORIOS = ['dataRealizada', 'operador', 'dataHora', 'protocolo', 'notaMonitoria', 'mo', 'atendimento'];
+
+  // ============================================================
+  // ESTADO E UTILITÁRIOS
+  // ============================================================
   let modoAtual = 'MONITORIA';
-  let currentEditingId = null;
-  let activeDateTab = 'TODAS';
-  let registrosNuvem = []; 
-  let chartInstance = null;
-  const emailGestor = 'gestor.monit@painel.com';
-  const camposObrigatorios = ['fieldDataRealizada','fieldOperador','fieldDataHora','fieldProtocolo','fieldNotaMonitoria','fieldMo','fieldAtendimento'];
+  let editandoId = null;
+  let abaAtiva = 'TODAS';
+  let registros = [];
+  let grafico = null;
+  let escuroGrafico = null;
+  let salvando = false;
+  let toastTimer = null;
 
-  // OBSERVAÇÃO DE LOGIN
+  const $ = (id) => document.getElementById(id);
+  const ehGestor = () => !!auth.currentUser && auth.currentUser.email.toLowerCase() === EMAIL_GESTOR;
+  const popId = (chave) => 'pop' + chave[0].toUpperCase() + chave.slice(1);
+  const dataParaDate = (s) => { const [d, m, a] = s.split('/'); return new Date(+a, m - 1, +d); };
+
+  function hoje() {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  }
+
+  function escapeHtml(texto) {
+    return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function toast(msg) {
+    const el = $('toast');
+    el.innerText = msg;
+    el.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3000);
+  }
+
+  function baixarBlob(blob, nome) {
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = nome;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function copiarTexto(texto, msg = 'Copiado!') {
+    try { await navigator.clipboard.writeText(texto); toast(msg); }
+    catch (e) { toast('Erro ao copiar.'); }
+  }
+
+  const lerCampos = () => Object.fromEntries(Object.entries(CAMPOS).map(([k, id]) => [k, $(id).value.trim()]));
+  const preencherCampos = (d) => Object.entries(CAMPOS).forEach(([k, id]) => { $(id).value = d[k] ?? ''; });
+
+  // Formato único do texto do registro (usado ao salvar, no pop-up e na reabertura)
+  function montarTextoRegistro(d) {
+    return `Realizada: ${d.dataRealizada}\nOperador(a): ${d.operador}\nData/Hora: ${d.dataHora}\nProtocolo: ${d.protocolo}\nAQM: ${d.notaAqm}\nMonitoria: ${d.notaMonitoria}\nRegistro de Atendimento\nMO: ${d.mo}\n${d.atendimento}\nObservação(ões): ${d.observacao}\nOcorrência(s): ${d.ocorrencia}`;
+  }
+
+  // ============================================================
+  // AUTENTICAÇÃO
+  // ============================================================
   auth.onAuthStateChanged((user) => {
-    if (user) {
-      document.getElementById('login-overlay').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'flex'; 
-
-      const isGestor = user.email.toLowerCase() === emailGestor;
-      document.getElementById('groupFiltroOperador').style.display = isGestor ? 'block' : 'none';
-
-      carregarHistoricoDaNuvem(); 
-    } else {
-      document.getElementById('login-overlay').style.display = 'flex';
-      document.getElementById('appContainer').style.display = 'none';
-    }
+    $('login-overlay').style.display = user ? 'none' : 'flex';
+    $('appContainer').style.display = user ? 'flex' : 'none';
+    if (!user) return;
+    $('groupFiltroOperador').style.display = ehGestor() ? 'block' : 'none';
+    carregarHistorico();
   });
 
-  function switchSection(section) {
-    document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
-
-    if (section === 'monitoria') {
-      document.getElementById('section-monitoria').classList.add('active');
-      document.getElementById('menuMonitoria').classList.add('active');
-      document.getElementById('sectionTitle').innerText = 'Realizar Monitoria';
-    } else if (section === 'historico') {
-      document.getElementById('section-historico').classList.add('active');
-      document.getElementById('menuHistorico').classList.add('active');
-      document.getElementById('sectionTitle').innerText = 'Monitoria(s)';
-      setTimeout(() => { if(chartInstance) chartInstance.resize(); }, 200);
-    }
-  }
-
-  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
-
-  function toggleChartCard() {
-    const bodyEl = document.getElementById('chartBodyContainer');
-    const iconEl = document.getElementById('chartToggleIcon');
-    if (bodyEl.style.display === 'none') {
-      bodyEl.style.display = 'block';
-      iconEl.innerText = '[-] Minimizar Gráfico';
-      setTimeout(() => { if(chartInstance) chartInstance.resize(); }, 100);
-    } else {
-      bodyEl.style.display = 'none';
-      iconEl.innerText = '[+] Expandir Gráfico';
-    }
-  }
-
   function fazerLogin() {
-    const user = document.getElementById('loginUser').value.trim();
-    const pass = document.getElementById('loginPass').value;
-    const email = user.includes('@') ? user : (user + "@painel.com"); 
-    
-    auth.signInWithEmailAndPassword(email, pass).catch((error) => {
-      document.getElementById('loginError').style.display = 'block';
+    const usuario = $('loginUser').value.trim();
+    const email = usuario.includes('@') ? usuario : usuario + '@painel.com';
+    auth.signInWithEmailAndPassword(email, $('loginPass').value).catch((err) => {
+      const el = $('loginError');
+      el.innerText = err.code === 'auth/network-request-failed' ? 'Sem conexão. Tente novamente.' : 'Credenciais inválidas.';
+      el.style.display = 'block';
     });
   }
 
   function fazerLogout() { auth.signOut(); }
 
-  function abrirPopOutWindow() {
-    const popWin = window.open("", "ChecklistPopout", "width=450,height=650,resizable=yes,scrollbars=yes");
-    if (!popWin) { showToast("⚠️ Permita pop-ups no seu navegador."); return; }
-
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    popWin.document.write(`
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-      <head>
-        <meta charset="UTF-8">
-        <title>Checklist - Monitoria</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; background: ${isDark ? '#1e1e1e' : '#f0f2f5'}; color: ${isDark ? '#e0e0e0' : '#333'}; margin: 0; }
-          input, textarea { width: 100%; padding: 8px; font-size: 13px; margin-top: 2px; box-sizing: border-box; background: ${isDark ? '#2d2d2d' : '#fff'}; color: ${isDark ? '#e0e0e0' : '#333'}; border: 1px solid ${isDark ? '#444' : '#ccc'}; border-radius: 4px; }
-          label { font-size: 11px; font-weight: bold; margin-top: 6px; display: block; color: ${isDark ? '#aaa' : '#555'}; }
-          button { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; font-size: 14px; }
-          button:hover { background: #1b5e20; }
-        </style>
-      </head>
-      <body>
-        ${document.getElementById('checklistTemplate').innerHTML}
-      </body>
-      </html>
-    `);
-    popWin.document.close();
-
-    setTimeout(() => {
-      popWin.document.getElementById('popDataRealizada').value = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
-      popWin.document.getElementById('popOperador').value = document.getElementById('fieldOperador').value;
-      popWin.document.getElementById('popDataHora').value = document.getElementById('fieldDataHora').value;
-      popWin.document.getElementById('popProtocolo').value = document.getElementById('fieldProtocolo').value;
-      popWin.document.getElementById('popNotaMonitoria').value = document.getElementById('fieldNotaMonitoria').value;
-      popWin.document.getElementById('popNotaAqm').value = document.getElementById('fieldNotaAqm').value;
-      popWin.document.getElementById('popMo').value = document.getElementById('fieldMo').value;
-      popWin.document.getElementById('popAtendimento').value = document.getElementById('fieldAtendimento').value;
-      popWin.document.getElementById('popObservacao').value = document.getElementById('fieldObservacao').value;
-      popWin.document.getElementById('popOcorrencia').value = document.getElementById('fieldOcorrencia').value;
-
-      // Botão "Limpar" do pop-up: limpa a janela e também o formulário/ficha da tela principal
-      popWin.document.getElementById('btnPopLimparCampos').onclick = function() { limparCamposPopout(popWin.document, true); };
-      popWin.document.getElementById('btnEnviarPopout').onclick = function() { enviarDadosDoPopout(popWin.document); };
-    }, 150);
+  // ============================================================
+  // INTERFACE (menu, tema, seções)
+  // ============================================================
+  function switchSection(secao) {
+    document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
+    const historico = secao === 'historico';
+    $(historico ? 'section-historico' : 'section-monitoria').classList.add('active');
+    $(historico ? 'menuHistorico' : 'menuMonitoria').classList.add('active');
+    $('sectionTitle').innerText = historico ? 'Monitoria(s)' : 'Realizar Monitoria';
+    if (historico) setTimeout(() => grafico && grafico.resize(), 200);
   }
 
-  // Limpa todos os campos do pop-up. Se limparTelaPrincipal = true, limpa também a tela principal.
-  // (No envio, o parâmetro fica false para não apagar a ficha recém-gerada.)
-  function limparCamposPopout(docContext, limparTelaPrincipal = false) {
-    docContext.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
-    docContext.getElementById('popDataRealizada').value = getHojeDataFormatada();
-    const campoOperador = docContext.getElementById('popOperador');
-    if (campoOperador) campoOperador.focus();
+  function toggleSidebar() { $('sidebar').classList.toggle('collapsed'); }
 
-    if (limparTelaPrincipal) limparRelatorioBruto();
+  function toggleChartCard() {
+    const corpo = $('chartBodyContainer');
+    const aberto = corpo.style.display !== 'none';
+    corpo.style.display = aberto ? 'none' : 'block';
+    $('chartToggleIcon').innerText = aberto ? '[+] Expandir Gráfico' : '[-] Minimizar Gráfico';
+    if (!aberto) setTimeout(() => grafico && grafico.resize(), 100);
   }
 
-  function enviarDadosDoPopout(docContext) {
-    const dtRealizada = docContext.getElementById('popDataRealizada').value.trim() || getHojeDataFormatada();
-    const op = docContext.getElementById('popOperador').value.trim();
-    const dtHora = docContext.getElementById('popDataHora').value.trim();
-    const prot = docContext.getElementById('popProtocolo').value.trim();
-    const notaMon = docContext.getElementById('popNotaMonitoria').value.trim();
-    const notaAqm = docContext.getElementById('popNotaAqm').value.trim();
-    const mo = docContext.getElementById('popMo').value.trim();
-    const atend = docContext.getElementById('popAtendimento').value.trim();
-    const obs = docContext.getElementById('popObservacao').value.trim();
-    const ocor = docContext.getElementById('popOcorrencia').value.trim();
-
-    document.getElementById('fieldDataRealizada').value = dtRealizada;
-    document.getElementById('fieldOperador').value = op;
-    document.getElementById('fieldDataHora').value = dtHora;
-    document.getElementById('fieldProtocolo').value = prot;
-    document.getElementById('fieldNotaMonitoria').value = notaMon;
-    document.getElementById('fieldNotaAqm').value = notaAqm;
-    document.getElementById('fieldMo').value = mo;
-    document.getElementById('fieldAtendimento').value = atend;
-    document.getElementById('fieldObservacao').value = obs;
-    document.getElementById('fieldOcorrencia').value = ocor;
-
-    const rawFormatado = `Realizada: ${dtRealizada}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${notaAqm}\nMonitoria: ${notaMon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
-    document.getElementById('rawInput').value = rawFormatado;
-
-    limparErrosVisuais(); atualizarInterface();
-    if (verificarCamposFaltantes().length > 0) { showToast('⚠️ Preencha os campos obrigatórios!'); return; }
-
-    verificarEProcessarSalvamento(rawFormatado, prot);
-    showToast('🚀 Ficha gerada via Pop-up e sincronizada!');
-    limparCamposPopout(docContext);
-  }
-
-  function getHojeDataFormatada() {
-    const hoje = new Date();
-    const dia = String(hoje.getDate()).padStart(2, '0');
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    return `${dia}/${mes}/${hoje.getFullYear()}`;
-  }
-
-  function showToast(msg) {
-    const toast = document.getElementById('toast'); toast.innerText = msg; toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 3000);
-  }
-
-  function escapeHtml(text) {
-    return String(text ?? '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  function aplicarTema(tema) {
+    document.documentElement.setAttribute('data-theme', tema);
+    $('themeIcon').innerText = tema === 'dark' ? '☀️' : '🌙';
+    $('themeText').innerText = tema === 'dark' ? 'Tema Claro' : 'Modo Escuro';
   }
 
   function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    document.getElementById('themeIcon').innerText = newTheme === 'dark' ? '☀️' : '🌙';
-    document.getElementById('themeText').innerText = newTheme === 'dark' ? 'Tema Claro' : 'Modo Escuro';
-    localStorage.setItem('theme_preference', newTheme);
-    renderizarGraficoProdutividade(obterListaFiltradaParaGrafico());
+    const novo = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    aplicarTema(novo);
+    try { localStorage.setItem('theme_preference', novo); } catch (e) { /* storage indisponível */ }
+    renderizarGrafico(listaFiltrada());
   }
 
   function setModo(modo) {
     modoAtual = modo;
-    document.getElementById('btnModeMonitoria').classList.toggle('active', modo === 'MONITORIA');
-    document.getElementById('btnModeReorientacao').classList.toggle('active', modo === 'REORIENTACAO');
-    document.getElementById('viewMonitoria').style.display = modo === 'MONITORIA' ? 'block' : 'none';
-    document.getElementById('viewReorientacao').style.display = modo === 'REORIENTACAO' ? 'block' : 'none';
-    document.getElementById('groupReorientOptions').style.display = modo === 'REORIENTACAO' ? 'grid' : 'none';
-    document.getElementById('rowNotas').style.display = modo === 'MONITORIA' ? 'grid' : 'none';
+    const mon = modo === 'MONITORIA';
+    $('btnModeMonitoria').classList.toggle('active', mon);
+    $('btnModeReorientacao').classList.toggle('active', !mon);
+    $('viewMonitoria').style.display = mon ? 'block' : 'none';
+    $('viewReorientacao').style.display = mon ? 'none' : 'block';
+    $('groupReorientOptions').style.display = mon ? 'none' : 'grid';
+    $('rowNotas').style.display = mon ? 'grid' : 'none';
+    limparErrosVisuais();
     atualizarInterface();
   }
 
-  function processarEAutoSalvar() {
-    const raw = document.getElementById('rawInput').value;
-    if (!raw.trim()) { showToast('Cole algum texto primeiro.'); return; }
+  // ============================================================
+  // FORMULÁRIO: validação, extração e pré-visualização
+  // ============================================================
+  // Na Reorientação a nota não é exibida, então não pode ser obrigatória
+  const obrigatorios = () => modoAtual === 'REORIENTACAO' ? OBRIGATORIOS.filter(k => k !== 'notaMonitoria') : OBRIGATORIOS;
+
+  function limparErrosVisuais() { OBRIGATORIOS.forEach(k => $(CAMPOS[k]).classList.remove('field-error')); }
+  function validarECarregar() { limparErrosVisuais(); atualizarInterface(); }
+
+  function verificarCamposFaltantes() {
     limparErrosVisuais();
+    return obrigatorios().filter((k) => {
+      const el = $(CAMPOS[k]);
+      const vazio = !el.value.trim();
+      el.classList.toggle('field-error', vazio);
+      return vazio;
+    });
+  }
 
-    const realizadaMatch = raw.match(/Realizada:\s*(\d{2}\/\d{2}\/\d{4})/i);
-    const dataRealizada = realizadaMatch ? realizadaMatch[1].trim() : getHojeDataFormatada();
+  function extrairDados(raw) {
+    const num = '(\\d+(?:[.,]\\d+)?)';
+    // \b evita casar rótulos no meio de palavras (ex.: "como:" não vira "MO:")
+    const linha = (rotulo, valor = '(.*)', flags = 'i') => {
+      const m = raw.match(new RegExp('\\b' + rotulo + ':[ \\t]*' + valor, flags));
+      return m ? m[1].trim() : '';
+    };
+    const fimAtend = '(?=(?:Observação\\(ões\\)|Ocorrência\\(s\\)|Observação|Ocorrências|DESVIO):|$)';
+    const fimObs = '(?=(?:Ocorrência\\(s\\)|Ocorrências|DESVIO):|$)';
 
-    const operadorMatch = raw.match(/Operador\(a\):\s*(.*)/i);
-    const dataHoraMatch = raw.match(/Data\/Hora:\s*(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}:\d{2})?)/i) || raw.match(/Data\/Hora:\s*([^\n\r]+)/i);
-    const protocoloMatch = raw.match(/Protocolo:\s*(\d+)/i) || raw.match(/Protocolo:\s*(.*)/i);
-    const protNum = protocoloMatch ? protocoloMatch[1].replace(/Protocolo:\s*/i, '').trim() : '';
-    const aqmMatch = raw.match(/AQM:\s*(\d+(?:[.,]\d+)?)/i);
-    const monitoriaMatch = raw.match(/Monitoria:\s*(\d+(?:[.,]\d+)?)/i) || raw.match(/Nota:\s*(\d+(?:[.,]\d+)?)/i);
-    const moMatch = raw.match(/MO:\s*(\d+)/i) || raw.match(/MO:\s*(.*)/i);
-    
-    const atendimentoMatch = raw.match(/(?:Registro de Atendimento|Atendimento)[\s\S]*?MO:\s*[^\n]*\n([\s\S]*?)(?=(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências|DESVIO):|$)/i) || raw.match(/(?:Registro de Atendimento|Atendimento)\s*\n([\s\S]*?)(?=(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências|DESVIO):|$)/i);
-    const obsMatch = raw.match(/Observação\(ões\):\s*([\s\S]*?)(?=(?:Ocorrência\(s\)|Ocorrências|DESVIO):|$)/i) || raw.match(/Observação:\s*([\s\S]*?)(?=(?:Ocorrência\(s\)|Ocorrências|DESVIO):|$)/i);
-    const ocorrenciaMatch = raw.match(/Ocorrência\(s\):\s*([\s\S]*)/i) || raw.match(/Ocorrências:\s*([\s\S]*)/i) || raw.match(/DESVIO:\s*([\s\S]*)/i);
+    const atendMatch =
+      raw.match(new RegExp('(?:Registro de Atendimento|Atendimento)[\\s\\S]*?\\bMO:[ \\t]*[^\\n]*\\n([\\s\\S]*?)' + fimAtend, 'i')) ||
+      raw.match(new RegExp('(?:Registro de Atendimento|Atendimento)\\s*\\n([\\s\\S]*?)' + fimAtend, 'i'));
+    const obsMatch = raw.match(new RegExp('Observação\\(ões\\):\\s*([\\s\\S]*?)' + fimObs, 'i')) ||
+                     raw.match(new RegExp('Observação:\\s*([\\s\\S]*?)' + fimObs, 'i'));
+    const ocorMatch = raw.match(/Ocorrência\(s\):\s*([\s\S]*)/i) || raw.match(/Ocorrências:\s*([\s\S]*)/i) || raw.match(/DESVIO:\s*([\s\S]*)/i);
 
-    document.getElementById('fieldDataRealizada').value = dataRealizada;
-    document.getElementById('fieldOperador').value = operadorMatch ? operadorMatch[1].trim() : '';
-    document.getElementById('fieldDataHora').value = (dataHoraMatch && !dataHoraMatch[1].toLowerCase().includes('protocolo')) ? dataHoraMatch[1].trim() : '';
-    document.getElementById('fieldProtocolo').value = protNum;
-    document.getElementById('fieldNotaAqm').value = aqmMatch ? aqmMatch[1].trim() : '';
-    document.getElementById('fieldNotaMonitoria').value = monitoriaMatch ? monitoriaMatch[1].trim() : '';
-    document.getElementById('fieldMo').value = moMatch ? moMatch[1].replace(/MO:\s*/i, '').trim() : '';
-
-    if (atendimentoMatch) {
-      document.getElementById('fieldAtendimento').value = atendimentoMatch[1].trim();
-    } else if (raw.includes("Sr.ª") || raw.includes("Sra.")) {
-      const fallback = raw.substring(raw.search(/Sr\.?ª?/i));
-      const obsIdx = fallback.search(/(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências):/i);
-      document.getElementById('fieldAtendimento').value = obsIdx !== -1 ? fallback.substring(0, obsIdx).trim() : fallback.trim();
-    } else { document.getElementById('fieldAtendimento').value = ''; }
-
-    document.getElementById('fieldObservacao').value = (obsMatch && obsMatch[1].trim()) ? obsMatch[1].trim() : '';
-    document.getElementById('fieldOcorrencia').value = (ocorrenciaMatch && ocorrenciaMatch[1].trim()) ? ocorrenciaMatch[1].trim() : '';
-
-    atualizarInterface();
-
-    if (protNum) {
-      const existente = registrosNuvem.find(i => i.protocolo === protNum);
-      if (existente) { currentEditingId = existente.id; } else { currentEditingId = null; }
+    let atendimento = atendMatch ? atendMatch[1].trim() : '';
+    if (!atendMatch && /Sr\.?ª|Sra\./i.test(raw)) {
+      const trecho = raw.substring(raw.search(/Sr\.?ª?/i));
+      const idx = trecho.search(/(?:Observação\(ões\)|Ocorrência\(s\)|Observação|Ocorrências):/i);
+      atendimento = (idx !== -1 ? trecho.substring(0, idx) : trecho).trim();
     }
 
-    if (verificarCamposFaltantes().length > 0) { 
-      showToast('⚠️ Dados extraídos, mas há campos obrigatórios vazios.'); 
-      return; 
-    }
-
-    verificarEProcessarSalvamento(raw, protNum);
+    return {
+      dataRealizada: linha('Realizada', '(\\d{2}\\/\\d{2}\\/\\d{4})') || hoje(),
+      operador: linha('Operador\\(a\\)'),
+      dataHora: linha('Data\\/Hora', '(\\d{2}\\/\\d{2}\\/\\d{4}(?:\\s+\\d{2}:\\d{2}(?::\\d{2})?)?)') || linha('Data\\/Hora'),
+      protocolo: linha('Protocolo', '(\\d+)') || linha('Protocolo'),
+      notaAqm: linha('AQM', num),
+      notaMonitoria: linha('Monitoria', num) || linha('Nota', num),
+      mo: linha('MO', '(.*)', ''),
+      atendimento,
+      observacao: obsMatch ? obsMatch[1].trim() : '',
+      ocorrencia: ocorMatch ? ocorMatch[1].trim() : ''
+    };
   }
 
   function atualizarInterface() {
-    const dataRealizada = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
-    const dataHora = document.getElementById('fieldDataHora').value || '---';
-    const observacao = document.getElementById('fieldObservacao').value.trim() !== '' ? document.getElementById('fieldObservacao').value.trim() : '-Não se aplica.';
-    const ocorrencia = document.getElementById('fieldOcorrencia').value.trim() !== '' ? document.getElementById('fieldOcorrencia').value.trim() : '-Não se aplica.';
-    
-    document.getElementById('outDataRealizada').innerText = dataRealizada;
-    document.getElementById('outOperador').innerText = document.getElementById('fieldOperador').value || '---';
-    document.getElementById('outDataHora').innerText = dataHora;
-    document.getElementById('outProtocolo').innerText = document.getElementById('fieldProtocolo').value || '---';
-    document.getElementById('outNotaMonitoria').innerText = document.getElementById('fieldNotaMonitoria').value || '--';
-    document.getElementById('outNotaAqm').innerText = document.getElementById('fieldNotaAqm').value || '--';
-    document.getElementById('outMo').innerText = document.getElementById('fieldMo').value || '---';
-    document.getElementById('outAtendimento').innerText = document.getElementById('fieldAtendimento').value || '---';
-    document.getElementById('outObservacao').innerText = observacao;
-    document.getElementById('outOcorrencia').innerText = ocorrencia;
+    const d = lerCampos();
+    const dataHora = d.dataHora || '---';
+    const operador = d.operador || '---';
+    const protocolo = d.protocolo || '---';
+    const atendimento = d.atendimento || '---';
+    const observacao = d.observacao || NAO_SE_APLICA;
+    const ocorrencia = d.ocorrencia || NAO_SE_APLICA;
 
-    let detalhe = (observacao !== '-Não se aplica.' && ocorrencia !== '-Não se aplica.') ? `OBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}` : (observacao !== '-Não se aplica.') ? `OBSERVAÇÃO(ÕES):\n${observacao}` : `DESVIO / OCORRÊNCIA(S):\n${ocorrencia}`;
-    document.getElementById('justificativaRender').innerText = `Data/Hora: ${dataHora}\n\n${detalhe}`;
-    
-    document.getElementById('reorientRender').innerText = `${document.getElementById('fieldSaudacao').value}, ${document.getElementById('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${document.getElementById('fieldOperador').value || '---'}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${document.getElementById('fieldProtocolo').value || '---'}\nOperador(a): ${document.getElementById('fieldOperador').value || '---'}\n\nSOLICITAÇÃO:\n${document.getElementById('fieldAtendimento').value || '---'}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
+    const saidas = {
+      outDataRealizada: d.dataRealizada || hoje(), outOperador: operador, outDataHora: dataHora,
+      outProtocolo: protocolo, outNotaMonitoria: d.notaMonitoria || '--', outNotaAqm: d.notaAqm || '--',
+      outMo: d.mo || '---', outAtendimento: atendimento, outObservacao: observacao, outOcorrencia: ocorrencia
+    };
+    Object.entries(saidas).forEach(([id, valor]) => { $(id).innerText = valor; });
+
+    const temObs = observacao !== NAO_SE_APLICA;
+    const temOcor = ocorrencia !== NAO_SE_APLICA;
+    const detalhe = (temObs && temOcor) ? `OBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}`
+                  : temObs ? `OBSERVAÇÃO(ÕES):\n${observacao}`
+                  : `DESVIO / OCORRÊNCIA(S):\n${ocorrencia}`;
+    $('justificativaRender').innerText = `Data/Hora: ${dataHora}\n\n${detalhe}`;
+
+    $('reorientRender').innerText = `${$('fieldSaudacao').value}, ${$('fieldSupervisor').value}\n\nSolicito por gentileza REORIENTAÇÃO ao operador(a) ${operador}, devido os desvios identificados.\n\nData/Hora: ${dataHora}\nProtocolo: ${protocolo}\nOperador(a): ${operador}\n\nSOLICITAÇÃO:\n${atendimento}\n\nOBSERVAÇÃO(ÕES):\n${observacao}\n\nDESVIO / OCORRÊNCIA(S):\n${ocorrencia}\n\nQualquer dúvida estou a disposição!`;
+  }
+
+  function limparRelatorioBruto() {
+    editandoId = null;
+    $('rawInput').value = '';
+    preencherCampos({ dataRealizada: hoje() });
+    limparErrosVisuais();
+    atualizarInterface();
+    toast('Campos limpos!');
+  }
+
+  function vincularEdicaoPorProtocolo(protocolo) {
+    if (!protocolo) return;
+    const existente = registros.find(r => r.protocolo === protocolo);
+    editandoId = existente ? existente.id : null;
+  }
+
+  function processarEAutoSalvar() {
+    const raw = $('rawInput').value;
+    if (!raw.trim()) { toast('Cole algum texto primeiro.'); return; }
+    limparErrosVisuais();
+
+    const d = extrairDados(raw);
+    preencherCampos(d);
+    atualizarInterface();
+    vincularEdicaoPorProtocolo(d.protocolo);
+
+    if (verificarCamposFaltantes().length) { toast('⚠️ Dados extraídos, mas há campos obrigatórios vazios.'); return; }
+    salvarRegistro(raw, d.protocolo);
   }
 
   function salvarRegistroManualmente() {
-    if (verificarCamposFaltantes().length > 0) { 
-      showToast('⚠️ Preencha todos os campos obrigatórios antes de salvar.'); 
-      return; 
-    }
-    
-    const dtRealizada = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
-    const op = document.getElementById('fieldOperador').value;
-    const dtHora = document.getElementById('fieldDataHora').value;
-    const prot = document.getElementById('fieldProtocolo').value;
-    const aqm = document.getElementById('fieldNotaAqm').value;
-    const mon = document.getElementById('fieldNotaMonitoria').value;
-    const mo = document.getElementById('fieldMo').value;
-    const atend = document.getElementById('fieldAtendimento').value;
-    const obs = document.getElementById('fieldObservacao').value;
-    const ocor = document.getElementById('fieldOcorrencia').value;
-    
-    const textoParaSalvar = `Realizada: ${dtRealizada}\nOperador(a): ${op}\nData/Hora: ${dtHora}\nProtocolo: ${prot}\nAQM: ${aqm}\nMonitoria: ${mon}\nRegistro de Atendimento\nMO: ${mo}\n${atend}\nObservação(ões): ${obs}\nOcorrência(s): ${ocor}`;
-    
-    if (prot) {
-      const existente = registrosNuvem.find(i => i.protocolo === prot);
-      if (existente) currentEditingId = existente.id;
-    }
-
-    verificarEProcessarSalvamento(textoParaSalvar, prot);
+    if (verificarCamposFaltantes().length) { toast('⚠️ Preencha todos os campos obrigatórios antes de salvar.'); return; }
+    const d = lerCampos();
+    d.dataRealizada = d.dataRealizada || hoje();
+    vincularEdicaoPorProtocolo(d.protocolo);
+    salvarRegistro(montarTextoRegistro(d), d.protocolo);
   }
 
-  async function verificarEProcessarSalvamento(rawText, protocoloVal) {
-    if (!auth.currentUser) {
-      alert("Erro: Você não está logado no sistema.");
-      return;
-    }
-    
-    const user = auth.currentUser;
-    const dtRealizadaField = document.getElementById('fieldDataRealizada').value || getHojeDataFormatada();
+  // ============================================================
+  // POP-UP DE CHECKLIST
+  // ============================================================
+  function lerPopout(doc) {
+    return Object.fromEntries(Object.keys(CAMPOS).map(k => [k, doc.getElementById(popId(k)).value.trim()]));
+  }
 
-    const docData = {
-      protocolo: protocoloVal || Date.now().toString(),
-      operador: document.getElementById('fieldOperador').value || 'Não identificado',
-      data: dtRealizadaField,
-      text: rawText,
-      tipo: modoAtual,
-      userId: user.uid,
-      autorEmail: user.email,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  function preencherPopout(doc, d) {
+    Object.keys(CAMPOS).forEach(k => { doc.getElementById(popId(k)).value = d[k] ?? ''; });
+  }
+
+  function abrirPopOutWindow() {
+    const pop = window.open('', 'ChecklistPopout', 'width=450,height=650,resizable=yes,scrollbars=yes');
+    if (!pop) { toast('⚠️ Permita pop-ups no seu navegador.'); return; }
+
+    const escuro = document.documentElement.getAttribute('data-theme') === 'dark';
+    const cor = escuro
+      ? { fundo: '#1e1e1e', texto: '#e0e0e0', campo: '#2d2d2d', borda: '#444', rotulo: '#aaa' }
+      : { fundo: '#f0f2f5', texto: '#333', campo: '#fff', borda: '#ccc', rotulo: '#555' };
+
+    pop.document.write(`<!DOCTYPE html>
+      <html lang="pt-BR"><head><meta charset="UTF-8"><title>Checklist - Monitoria</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; margin: 0; background: ${cor.fundo}; color: ${cor.texto}; }
+        input, textarea { width: 100%; padding: 8px; font-size: 13px; margin-top: 2px; box-sizing: border-box; background: ${cor.campo}; color: ${cor.texto}; border: 1px solid ${cor.borda}; border-radius: 4px; font-family: inherit; }
+        label { font-size: 11px; font-weight: bold; margin-top: 6px; display: block; color: ${cor.rotulo}; }
+        button { width: 100%; background: #2e7d32; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; font-size: 14px; }
+        button:hover { background: #1b5e20; }
+      </style></head>
+      <body>${$('checklistTemplate').innerHTML}</body></html>`);
+    pop.document.close();
+
+    const iniciar = () => {
+      const d = lerCampos();
+      d.dataRealizada = d.dataRealizada || hoje();
+      preencherPopout(pop.document, d);
+      pop.document.getElementById('btnPopLimparCampos').onclick = () => limparCamposPopout(pop.document, true);
+      pop.document.getElementById('btnEnviarPopout').onclick = () => enviarDadosDoPopout(pop.document);
     };
-
-    try {
-      if (currentEditingId) { 
-        await db.collection("monitorias").doc(currentEditingId).update(docData); 
-        showToast("🔄 Registro atualizado com sucesso!");
-      } else { 
-        const querySnapshot = await db.collection("monitorias")
-          .where("protocolo", "==", docData.protocolo)
-          .get();
-
-        if (!querySnapshot.empty) {
-          const existingDocId = querySnapshot.docs[0].id;
-          await db.collection("monitorias").doc(existingDocId).update(docData);
-          showToast("🔄 Protocolo já existia: registro atualizado!");
-        } else {
-          await db.collection("monitorias").add(docData); 
-          showToast("✅ Novo registro salvo na nuvem!");
-        }
-      }
-      
-      currentEditingId = null; 
-      activeDateTab = 'TODAS'; 
-      carregarHistoricoDaNuvem(); 
-      
-    } catch (error) { 
-      console.error("Erro Firebase:", error);
-      alert(`Falha ao salvar no banco de dados.\nMotivo: ${error.message}`); 
-    }
+    pop.document.getElementById('btnEnviarPopout') ? iniciar() : setTimeout(iniciar, 150);
   }
 
-  async function carregarHistoricoDaNuvem() {
-    if (!auth.currentUser) return;
-    try {
-      const user = auth.currentUser;
-      const isGestor = user.email.toLowerCase() === emailGestor;
-      
-      let snapshot;
-      if (isGestor) {
-        snapshot = await db.collection("monitorias").get();
-      } else {
-        snapshot = await db.collection("monitorias").where("userId", "==", user.uid).get();
-      }
-
-      registrosNuvem = [];
-      snapshot.forEach(doc => registrosNuvem.push({ id: doc.id, ...doc.data() }));
-      registrosNuvem.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-      
-      if (isGestor) {
-        popularFiltroOperadorGestor();
-      }
-
-      renderizarAbasELista();
-    } catch(error) { 
-      console.error("Erro ao carregar histórico:", error);
-    }
+  // Limpa o pop-up; com limparTelaPrincipal = true limpa também formulário e ficha da tela principal.
+  // (No envio fica false, para não apagar a ficha recém-gerada.)
+  function limparCamposPopout(doc, limparTelaPrincipal = false) {
+    doc.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+    doc.getElementById('popDataRealizada').value = hoje();
+    doc.getElementById('popOperador').focus();
+    if (limparTelaPrincipal) limparRelatorioBruto();
   }
 
-  function popularFiltroOperadorGestor() {
-    const selectOp = document.getElementById('filtroOperadorGestor');
-    const selecionadoAntes = selectOp.value || 'TODOS';
-    const opsSet = new Set(registrosNuvem.map(i => i.operador).filter(Boolean));
-    const opsUnicos = [...opsSet].sort();
-    let htmlOp = `<option value="TODOS">👥 Todos da Equipe</option>`;
-    opsUnicos.forEach(op => {
-      htmlOp += `<option value="${escapeHtml(op)}">${escapeHtml(op)}</option>`;
-    });
-    selectOp.innerHTML = htmlOp;
-    // Mantém o operador selecionado após recarregar a lista (se ainda existir)
-    selectOp.value = opsUnicos.includes(selecionadoAntes) ? selecionadoAntes : 'TODOS';
+  async function enviarDadosDoPopout(doc) {
+    const d = lerPopout(doc);
+    d.dataRealizada = d.dataRealizada || hoje();
+    preencherCampos(d);
+
+    const raw = montarTextoRegistro(d);
+    $('rawInput').value = raw;
+    atualizarInterface();
+    if (verificarCamposFaltantes().length) { toast('⚠️ Preencha os campos obrigatórios!'); return; }
+
+    vincularEdicaoPorProtocolo(d.protocolo);
+    if (await salvarRegistro(raw, d.protocolo)) limparCamposPopout(doc);
   }
 
-  function aplicarFiltrosPeriodo() {
-    activeDateTab = 'TODAS';
-    renderizarAbasELista();
+  // ============================================================
+  // FIREBASE: salvar, carregar, atualizar e excluir
+  // ============================================================
+  function bloquearBotoesSalvar(bloquear) {
+    document.querySelectorAll('[onclick="processarEAutoSalvar()"], [onclick="salvarRegistroManualmente()"]')
+      .forEach(btn => { btn.disabled = bloquear; });
   }
 
-  function limparFiltrosPeriodo() {
-    document.getElementById('filtroDataInicio').value = '';
-    document.getElementById('filtroDataFim').value = '';
-    const opFiltro = document.getElementById('filtroOperadorGestor');
-    if (opFiltro) opFiltro.value = 'TODOS';
-    activeDateTab = 'TODAS';
-    renderizarAbasELista();
-  }
-
-  function obterListaFiltradaParaGrafico() {
+  async function salvarRegistro(texto, protocolo) {
     const user = auth.currentUser;
-    const isGestor = user && user.email.toLowerCase() === emailGestor;
-    let lista = registrosNuvem;
+    if (!user) { alert('Erro: Você não está logado no sistema.'); return false; }
+    if (salvando) return false;
 
-    if (isGestor) {
-      const opFiltro = document.getElementById('filtroOperadorGestor').value;
-      // CORREÇÃO: o valor da opção "Todos da Equipe" é 'TODOS' (antes comparava com 'TODAS')
-      if (opFiltro && opFiltro !== 'TODOS') {
-        lista = lista.filter(i => i.operador === opFiltro);
+    const dataRealizada = $(CAMPOS.dataRealizada).value.trim() || hoje();
+    if (!REGEX_DATA.test(dataRealizada)) {
+      $(CAMPOS.dataRealizada).classList.add('field-error');
+      toast('⚠️ Data realizada inválida. Use o formato dd/mm/aaaa.');
+      return false;
+    }
+
+    salvando = true;
+    bloquearBotoesSalvar(true);
+
+    const dados = {
+      protocolo: protocolo || Date.now().toString(),
+      operador: $(CAMPOS.operador).value.trim() || 'Não identificado',
+      data: dataRealizada,
+      text: texto,
+      tipo: modoAtual
+    };
+    const colecao = db.collection(COLECAO);
+
+    try {
+      let id = editandoId;
+      let msg = '🔄 Registro atualizado com sucesso!';
+
+      if (!id) {
+        const consulta = await colecao.where('protocolo', '==', dados.protocolo).get();
+        if (!consulta.empty) { id = consulta.docs[0].id; msg = '🔄 Protocolo já existia: registro atualizado!'; }
       }
+
+      // Em atualização, userId/autorEmail originais são preservados (o autor não muda quando o gestor edita)
+      if (id) {
+        await colecao.doc(id).update({ ...dados, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+      } else {
+        const ref = await colecao.add({ ...dados, userId: user.uid, autorEmail: user.email, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        id = ref.id;
+        msg = '✅ Novo registro salvo na nuvem!';
+      }
+
+      // Atualiza a lista local em vez de reler a coleção inteira
+      const anterior = registros.find(r => r.id === id);
+      const local = { userId: user.uid, autorEmail: user.email, ...anterior, ...dados, id, timestamp: { seconds: Math.floor(Date.now() / 1000) } };
+      registros = anterior ? registros.map(r => r.id === id ? local : r) : [local, ...registros];
+      ordenarRegistros();
+
+      editandoId = null;
+      abaAtiva = 'TODAS';
+      atualizarFiltroOperador();
+      renderizarHistorico();
+      toast(msg);
+      return true;
+    } catch (error) {
+      console.error('Erro Firebase:', error);
+      alert(`Falha ao salvar no banco de dados.\nMotivo: ${error.message}`);
+      return false;
+    } finally {
+      salvando = false;
+      bloquearBotoesSalvar(false);
     }
+  }
 
-    const dataInicioStr = document.getElementById('filtroDataInicio').value; // AAAA-MM-DD
-    const dataFimStr = document.getElementById('filtroDataFim').value;       // AAAA-MM-DD
+  function ordenarRegistros() {
+    registros.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+  }
 
-    if (dataInicioStr || dataFimStr) {
-      const dInicio = dataInicioStr ? new Date(dataInicioStr + 'T00:00:00') : null;
-      const dFim = dataFimStr ? new Date(dataFimStr + 'T23:59:59') : null;
-
-      lista = lista.filter(i => {
-        if (!i.data) return false;
-        const partes = i.data.split('/');
-        if (partes.length !== 3) return false;
-        const itemDate = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
-
-        if (dInicio && itemDate < dInicio) return false;
-        if (dFim && itemDate > dFim) return false;
-        return true;
-      });
+  async function carregarHistorico() {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      const colecao = db.collection(COLECAO);
+      const snapshot = await (ehGestor() ? colecao.get() : colecao.where('userId', '==', user.uid).get());
+      registros = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      ordenarRegistros();
+      atualizarFiltroOperador();
+      renderizarHistorico();
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error);
+      toast('❌ Erro ao carregar o histórico.');
     }
-
-    return lista;
   }
 
   async function atualizarStatusRegistrado(id, marcado) {
     try {
-      await db.collection("monitorias").doc(id).update({ registradoSistema: marcado });
-      const item = registrosNuvem.find(i => i.id === id);
+      await db.collection(COLECAO).doc(id).update({ registradoSistema: marcado });
+      const item = registros.find(r => r.id === id);
       if (item) item.registradoSistema = marcado;
-      showToast(marcado ? "✔️ Marcado como registrado no sistema!" : "🔄 Desmarcado.");
+      toast(marcado ? '✔️ Marcado como registrado no sistema!' : '🔄 Desmarcado.');
     } catch (err) {
-      console.error("Erro ao atualizar status:", err);
-      showToast("❌ Erro ao salvar status do checkbox.");
+      console.error('Erro ao atualizar status:', err);
+      toast('❌ Erro ao salvar status do checkbox.');
     }
   }
 
-  function renderizarGraficoProdutividade(lista) {
-    const contagemPorData = {};
-    lista.forEach(item => {
-      if (item.data) {
-        contagemPorData[item.data] = (contagemPorData[item.data] || 0) + 1;
-      }
-    });
+  async function excluirItemHistorico(id) {
+    if (!confirm('Deseja realmente remover este registro permanentemente da nuvem?')) return;
+    try {
+      await db.collection(COLECAO).doc(id).delete();
+      registros = registros.filter(r => r.id !== id);
+      if (editandoId === id) editandoId = null;
+      atualizarFiltroOperador();
+      renderizarHistorico();
+      toast('🗑 Removido com sucesso.');
+    } catch (error) {
+      alert('Erro ao excluir: ' + error.message);
+    }
+  }
 
-    const datasOrdenadas = Object.keys(contagemPorData).sort((a, b) => {
-      const pA = a.split('/'), pB = b.split('/');
-      return new Date(pA[2], pA[1]-1, pA[0]) - new Date(pB[2], pB[1]-1, pB[0]);
-    });
+  // Reabrir apenas carrega os dados para edição; nada é salvo até o usuário confirmar
+  function recarregarHistorico(id) {
+    const item = registros.find(r => r.id === id);
+    if (!item) return;
+    editandoId = item.id;
+    $('rawInput').value = item.text;
+    switchSection('monitoria');
+    setModo(item.tipo || 'MONITORIA');
+    preencherCampos(extrairDados(item.text));
+    atualizarInterface();
+    toast('Modo de Edição: registro reaberto (nada foi salvo ainda).');
+  }
 
-    const quantidades = datasOrdenadas.map(d => contagemPorData[d]);
+  // ============================================================
+  // HISTÓRICO: filtros, gráfico e lista
+  // ============================================================
+  function atualizarFiltroOperador() {
+    if (!ehGestor()) return;
+    const select = $('filtroOperadorGestor');
+    const anterior = select.value || 'TODOS';
+    const operadores = [...new Set(registros.map(r => r.operador).filter(Boolean))].sort();
+    select.innerHTML = '<option value="TODOS">👥 Todos da Equipe</option>' +
+      operadores.map(op => `<option value="${escapeHtml(op)}">${escapeHtml(op)}</option>`).join('');
+    select.value = operadores.includes(anterior) ? anterior : 'TODOS';
+  }
 
-    const ctx = document.getElementById('graficoProdutividade').getContext('2d');
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  function aplicarFiltrosPeriodo() { abaAtiva = 'TODAS'; renderizarHistorico(); }
 
-    if (chartInstance) {
-      chartInstance.destroy();
+  function limparFiltrosPeriodo() {
+    $('filtroDataInicio').value = '';
+    $('filtroDataFim').value = '';
+    $('filtroOperadorGestor').value = 'TODOS';
+    aplicarFiltrosPeriodo();
+  }
+
+  function listaFiltrada() {
+    let lista = registros;
+
+    if (ehGestor()) {
+      const operador = $('filtroOperadorGestor').value;
+      if (operador && operador !== 'TODOS') lista = lista.filter(r => r.operador === operador);
     }
 
-    chartInstance = new Chart(ctx, {
+    const inicio = $('filtroDataInicio').value; // AAAA-MM-DD
+    const fim = $('filtroDataFim').value;
+    if (inicio || fim) {
+      const aData = (s) => { const [y, m, d] = s.split('-'); return new Date(+y, m - 1, +d); };
+      const dInicio = inicio ? aData(inicio) : null;
+      const dFim = fim ? aData(fim) : null;
+      lista = lista.filter((r) => {
+        if (!r.data || !REGEX_DATA.test(r.data)) return false;
+        const dt = dataParaDate(r.data);
+        return !(dInicio && dt < dInicio) && !(dFim && dt > dFim);
+      });
+    }
+    return lista;
+  }
+
+  function renderizarGrafico(lista) {
+    const contagem = {};
+    lista.forEach((r) => { if (r.data) contagem[r.data] = (contagem[r.data] || 0) + 1; });
+    const datas = Object.keys(contagem).sort((a, b) => dataParaDate(a) - dataParaDate(b));
+    const valores = datas.map(d => contagem[d]);
+    const escuro = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    // O tema muda as cores: recria o gráfico só nesse caso; nos demais apenas atualiza os dados
+    if (grafico && escuroGrafico !== escuro) { grafico.destroy(); grafico = null; }
+    if (grafico) {
+      grafico.data.labels = datas;
+      grafico.data.datasets[0].data = valores;
+      grafico.update();
+      return;
+    }
+
+    escuroGrafico = escuro;
+    const corTexto = escuro ? '#aaa' : '#555';
+    grafico = new Chart($('graficoProdutividade').getContext('2d'), {
       type: 'bar',
-      data: {
-        labels: datasOrdenadas,
-        datasets: [{
-          label: 'Monitorias Realizadas',
-          data: quantidades,
-          backgroundColor: isDark ? '#3949ab' : '#1a237e',
-          borderRadius: 4
-        }]
-      },
+      data: { labels: datas, datasets: [{ label: 'Monitorias Realizadas', data: valores, backgroundColor: escuro ? '#3949ab' : '#1a237e', borderRadius: 4 }] },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
+        plugins: { legend: { display: false } },
         scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: isDark ? '#aaa' : '#555', font: { size: 11 } }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { stepSize: 1, color: isDark ? '#aaa' : '#555', font: { size: 11 } },
-            grid: { color: isDark ? '#333' : '#eee' }
-          }
+          x: { grid: { display: false }, ticks: { color: corTexto, font: { size: 11 } } },
+          y: { beginAtZero: true, ticks: { stepSize: 1, color: corTexto, font: { size: 11 } }, grid: { color: escuro ? '#333' : '#eee' } }
         }
       }
     });
   }
 
-  function renderizarAbasELista() {
-    const dataHoje = getHojeDataFormatada();
-    const listaParaExibir = obterListaFiltradaParaGrafico();
+  function renderizarHistorico() {
+    const hojeStr = hoje();
+    const lista = listaFiltrada();
 
-    document.getElementById('todayCounter').innerText = listaParaExibir.filter(i => i.data === dataHoje).length;
-    document.getElementById('totalCounter').innerText = registrosNuvem.length;
+    // Contadores refletem tudo o que o usuário tem, independentemente dos filtros da tela
+    $('todayCounter').innerText = registros.filter(r => r.data === hojeStr).length;
+    $('totalCounter').innerText = registros.length;
 
-    renderizarGraficoProdutividade(listaParaExibir);
+    renderizarGrafico(lista);
 
-    const tabsContainer = document.getElementById('dateTabsContainer');
-    const listContainer = document.getElementById('historyContainer');
-    if (listaParaExibir.length === 0) {
-      tabsContainer.innerHTML = ''; 
-      listContainer.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este período.<br><small>Tente ajustar as datas de início e fim acima.</small></div>'; 
+    const abas = $('dateTabsContainer');
+    const container = $('historyContainer');
+    if (!lista.length) {
+      abas.innerHTML = '';
+      container.innerHTML = '<div style="padding:40px 10px; color:#888; text-align:center;">Nenhum registro encontrado para este período.<br><small>Tente ajustar as datas de início e fim acima.</small></div>';
       return;
     }
 
-    const datasUnicas = [...new Set(listaParaExibir.map(i => i.data))];
-    let tabsHtml = `<div class="date-tab ${activeDateTab === 'TODAS' ? 'active' : ''}" onclick="setDateTab('TODAS')">Todas (${listaParaExibir.length})</div>`;
-    datasUnicas.forEach(dt => {
-      const c = listaParaExibir.filter(i => i.data === dt).length;
-      tabsHtml += `<div class="date-tab ${activeDateTab === dt ? 'active' : ''}" onclick="setDateTab('${dt}')">${dt === dataHoje ? 'Hoje' : dt} (${c})</div>`;
-    });
-    tabsContainer.innerHTML = tabsHtml;
+    const aba = (valor, rotulo, qtd) =>
+      `<div class="date-tab ${abaAtiva === valor ? 'active' : ''}" role="button" tabindex="0" data-dt="${escapeHtml(valor)}" onclick="setDateTab(this.dataset.dt)">${escapeHtml(rotulo)} (${qtd})</div>`;
+    const datas = [...new Set(lista.map(r => r.data))];
+    abas.innerHTML = aba('TODAS', 'Todas', lista.length) +
+      datas.map(dt => aba(dt, dt === hojeStr ? 'Hoje' : dt, lista.filter(r => r.data === dt).length)).join('');
 
-    const filtradosPorData = activeDateTab === 'TODAS' ? listaParaExibir : listaParaExibir.filter(i => i.data === activeDateTab);
-    
-    listContainer.innerHTML = filtradosPorData.map(item => `
+    const visiveis = abaAtiva === 'TODAS' ? lista : lista.filter(r => r.data === abaAtiva);
+    container.innerHTML = visiveis.map(item => `
       <div class="history-card-item">
         <div class="history-card-header" onclick="toggleCardBody('${item.id}')">
           <div style="display: flex; align-items: center; gap: 14px;">
             <input type="checkbox" style="width: 20px; height: 20px; cursor: pointer;" ${item.registradoSistema ? 'checked' : ''} onclick="event.stopPropagation(); atualizarStatusRegistrado('${item.id}', this.checked)" title="Registrado no sistema externo">
             <div>
-              <strong style="font-size: 15px;">${escapeHtml(item.operador)}</strong> 
+              <strong style="font-size: 15px;">${escapeHtml(item.operador)}</strong>
               <span style="color:var(--text-muted); font-size:12px; margin-left: 8px;">(${escapeHtml(item.data)}) - <em>${escapeHtml(item.tipo || 'MONITORIA')}</em> [Prot: ${escapeHtml(item.protocolo || 'N/A')}]</span>
             </div>
           </div>
@@ -1026,127 +1066,98 @@
           </div>
         </div>
         <div id="body-${item.id}" class="history-card-body">${escapeHtml(item.text)}</div>
-      </div>
-    `).join('');
+      </div>`).join('');
   }
 
-  // ACCORDION: abre apenas um registro por vez (ao abrir um, os demais são recolhidos)
-  function toggleCardBody(id) {
-    const bodyEl = document.getElementById(`body-${id}`);
-    const iconEl = document.getElementById(`icon-${id}`);
-    const estavaAberto = bodyEl.style.display === 'block';
+  function setDateTab(dt) { abaAtiva = dt; renderizarHistorico(); }
 
-    // Recolhe todos
+  // ACCORDION: abrir um registro recolhe os demais
+  function toggleCardBody(id) {
+    const corpo = $(`body-${id}`);
+    const estavaAberto = corpo.style.display === 'block';
     document.querySelectorAll('.history-card-body').forEach(el => { el.style.display = 'none'; });
     document.querySelectorAll('[id^="icon-"]').forEach(el => { el.innerText = '🔽 Ver Detalhes'; });
-
-    // Abre só o clicado (se já estava aberto, permanece recolhido)
     if (!estavaAberto) {
-      bodyEl.style.display = 'block';
-      iconEl.innerText = '🔼 Recolher';
+      corpo.style.display = 'block';
+      $(`icon-${id}`).innerText = '🔼 Recolher';
     }
   }
 
-  function setDateTab(dt) { activeDateTab = dt; renderizarAbasELista(); }
-
-  function recarregarHistorico(id) {
-    const item = registrosNuvem.find(i => i.id === id);
-    if(item) {
-      currentEditingId = item.id; 
-      document.getElementById('rawInput').value = item.text;
-      switchSection('monitoria');
-      if (item.tipo) setModo(item.tipo); 
-      processarEAutoSalvar(); 
-      showToast('Modo de Edição: Registro reaberto.');
-    }
-  }
-
-  async function excluirItemHistorico(id) {
-    if(confirm("Deseja realmente remover este registro permanentemente da nuvem?")) {
-      try {
-        await db.collection("monitorias").doc(id).delete();
-        if (currentEditingId === id) currentEditingId = null;
-        carregarHistoricoDaNuvem(); 
-        showToast('🗑 Removido com sucesso.');
-      } catch(error) {
-        alert("Erro ao excluir: " + error.message);
-      }
-    }
-  }
-
+  // ============================================================
+  // CÓPIA E EXPORTAÇÃO
+  // ============================================================
   async function copiarFichaFormatada() {
     try {
-      const el = document.getElementById('fichaRender');
-      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([el.outerHTML], { type: 'text/html' }), 'text/plain': new Blob([el.innerText], { type: 'text/plain' }) })]);
-      showToast('Ficha copiada!');
-    } catch (e) { showToast('Erro ao copiar.'); }
+      const el = $('fichaRender');
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([el.outerHTML], { type: 'text/html' }),
+        'text/plain': new Blob([el.innerText], { type: 'text/plain' })
+      })]);
+      toast('Ficha copiada!');
+    } catch (e) { toast('Erro ao copiar.'); }
   }
 
   async function copiarFichaComoImagem() {
-    showToast('Gerando imagem...');
-    const canvas = await html2canvas(document.getElementById('fichaRender'), { scale: 2, backgroundColor: '#ffffff' });
-    canvas.toBlob(async (blob) => { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); showToast('🖼️ Imagem PNG copiada!'); }, 'image/png');
+    toast('Gerando imagem...');
+    try {
+      const canvas = await html2canvas($('fichaRender'), { scale: 2, backgroundColor: '#ffffff' });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        toast('🖼️ Imagem PNG copiada!');
+      } catch (e) {
+        baixarBlob(blob, `ficha_${new Date().toISOString().slice(0, 10)}.png`);
+        toast('Cópia indisponível neste navegador: imagem baixada.');
+      }
+    } catch (e) { toast('Erro ao gerar a imagem.'); }
   }
 
-  async function copiarMascaraParaClipboard() {
-    await navigator.clipboard.writeText(`Realizada: ${getHojeDataFormatada()}\nOperador(a): \nData/Hora: \nProtocolo: \nAQM: \nMonitoria: \nRegistro de Atendimento\nMO: \nSr.ª \nObservação(ões):\nOcorrência(s):`);
-    showToast('Máscara copiada!');
-  }
-  async function copiarTextoReorientacao() { await navigator.clipboard.writeText(document.getElementById('reorientRender').innerText); showToast('Copiado!'); }
-  async function copiarTextoJustificativa() { await navigator.clipboard.writeText(document.getElementById('justificativaRender').innerText); showToast('Copiado!'); }
-
-  function limparRelatorioBruto() {
-    currentEditingId = null; document.getElementById('rawInput').value = '';
-    camposObrigatorios.concat(['fieldNotaAqm', 'fieldObservacao', 'fieldOcorrencia']).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
-    limparErrosVisuais(); atualizarInterface();
-    showToast('Campos limpos!');
-  }
-  
-  function limparErrosVisuais() { camposObrigatorios.forEach(id => document.getElementById(id).classList.remove('field-error')); }
-  function validarECarregar() { limparErrosVisuais(); atualizarInterface(); }
-  function verificarCamposFaltantes() {
-    let f = []; camposObrigatorios.forEach(id => {
-      const el = document.getElementById(id); if (!el || !el.value.trim()) { el.classList.add('field-error'); f.push(id); } else { el.classList.remove('field-error'); }
-    }); return f;
-  }
+  const copiarMascaraParaClipboard = () => copiarTexto(`Realizada: ${hoje()}\nOperador(a): \nData/Hora: \nProtocolo: \nAQM: \nMonitoria: \nRegistro de Atendimento\nMO: \nSr.ª \nObservação(ões):\nOcorrência(s):`, 'Máscara copiada!');
+  const copiarTextoReorientacao = () => copiarTexto($('reorientRender').innerText);
+  const copiarTextoJustificativa = () => copiarTexto($('justificativaRender').innerText);
 
   function exportarExcel() {
-    const f = obterListaFiltradaParaGrafico();
-    if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
-
-    const dataRows = f.map(h => ({ "Protocolo": h.protocolo, "Tipo": h.tipo || 'MONITORIA', "Data": h.data, "Operador": h.operador, "Registrado No Sistema": h.registradoSistema ? "SIM" : "NÃO", "Texto": h.text }));
-    const ws = XLSX.utils.json_to_sheet(dataRows);
+    const lista = listaFiltrada();
+    if (!lista.length) { toast('Sem dados para exportar com este filtro.'); return; }
+    const linhas = lista.map(h => ({
+      'Protocolo': h.protocolo, 'Tipo': h.tipo || 'MONITORIA', 'Data': h.data, 'Operador': h.operador,
+      'Registrado No Sistema': h.registradoSistema ? 'SIM' : 'NÃO', 'Texto': h.text
+    }));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
-    XLSX.writeFile(wb, `Monitorias_Relatorio_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), 'Relatorio');
+    XLSX.writeFile(wb, `Monitorias_Relatorio_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function exportarTxt() {
-    const f = obterListaFiltradaParaGrafico();
-    if (f.length === 0) { showToast('Sem dados para exportar com este filtro.'); return; }
-    
-    let content = "=== HISTÓRICO DE MONITORIAS E REORIENTAÇÕES ===\n\n";
-    f.forEach((h, index) => {
-      content += `--- REGISTRO #${index + 1} (${h.operador} - ${h.data}) [Registrado: ${h.registradoSistema ? 'SIM' : 'NÃO'}] ---\n`;
-      content += h.text + "\n\n";
-    });
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `relatorio_${new Date().toISOString().slice(0,10)}.txt`;
-    a.click();
+    const lista = listaFiltrada();
+    if (!lista.length) { toast('Sem dados para exportar com este filtro.'); return; }
+    const corpo = lista.map((h, i) =>
+      `--- REGISTRO #${i + 1} (${h.operador} - ${h.data}) [Registrado: ${h.registradoSistema ? 'SIM' : 'NÃO'}] ---\n${h.text}\n`
+    ).join('\n');
+    const blob = new Blob(['=== HISTÓRICO DE MONITORIAS E REORIENTAÇÕES ===\n\n' + corpo], { type: 'text/plain;charset=utf-8' });
+    baixarBlob(blob, `relatorio_${new Date().toISOString().slice(0, 10)}.txt`);
   }
 
-  window.onload = function() {
-    if (localStorage.getItem('theme_preference') === 'dark') { 
-      document.documentElement.setAttribute('data-theme', 'dark'); 
-      document.getElementById('themeIcon').innerText = '☀️';
-      document.getElementById('themeText').innerText = 'Tema Claro';
-    }
-    document.getElementById('fieldDataRealizada').value = getHojeDataFormatada();
-  };
+  // ============================================================
+  // INICIALIZAÇÃO
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', () => {
+    aplicarTema(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+    $('fieldDataRealizada').value = hoje();
+
+    // Login com Enter; erro some ao digitar de novo
+    ['loginUser', 'loginPass'].forEach((id) => {
+      $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') fazerLogin(); });
+      $(id).addEventListener('input', () => { $('loginError').style.display = 'none'; });
+    });
+
+    // Acessibilidade: itens clicáveis viram "botões" navegáveis por teclado
+    document.querySelectorAll('.sidebar-menu li, .mode-btn').forEach((el) => { el.setAttribute('role', 'button'); el.tabIndex = 0; });
+    document.addEventListener('keydown', (e) => {
+      const alvo = e.target.closest && e.target.closest('[role="button"]');
+      if (alvo && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alvo.click(); }
+    });
+  });
 </script>
 </body>
 </html>
